@@ -2,9 +2,21 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AppState, StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { applyAction, chooseComputerAction, createGame, startNextHand } from './src/domain/poker/game';
-import type { PokerAction, PokerGame } from './src/domain/poker/types';
+import {
+  createChinesePokerGame,
+  placeChineseCard,
+  removeChineseCard,
+  startNextChineseDeal,
+  submitChinesePokerArrangement,
+} from './src/domain/poker/chinesePoker';
+import type {
+  ChinesePokerGame,
+  ChinesePokerRow,
+} from './src/domain/poker/chinesePoker';
+import type { Card, PokerAction, PokerGame } from './src/domain/poker/types';
 import { HomeScreen } from './src/features/home/HomeScreen';
 import { PokerTableScreen } from './src/features/game/PokerTableScreen';
+import { ChinesePokerScreen } from './src/features/game/ChinesePokerScreen';
 import { PauseScreen } from './src/features/game/PauseScreen';
 import {
   ensureAnonymousPlayer,
@@ -13,7 +25,8 @@ import {
 } from './src/services/pokerSessionRepository';
 import { isSupabaseConfigured } from './src/lib/supabase/client';
 
-type Screen = 'home' | 'game' | 'paused';
+type Screen = 'home' | 'game' | 'paused' | 'chinese';
+type GameMode = 'holdem' | 'chinese';
 type CloudStatus = 'connecting' | 'connected' | 'offline' | 'error';
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
 
@@ -23,8 +36,10 @@ function describeError(error: unknown): string {
 
 function AppContent() {
   const [screen, setScreen] = useState<Screen>('home');
+  const [gameMode, setGameMode] = useState<GameMode>('holdem');
   const [computerPlayers, setComputerPlayers] = useState(1);
   const [game, setGame] = useState<PokerGame | null>(null);
+  const [chineseGame, setChineseGame] = useState<ChinesePokerGame | null>(null);
   const [savedGame, setSavedGame] = useState<PokerGame | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [cloudStatus, setCloudStatus] = useState<CloudStatus>('connecting');
@@ -105,7 +120,7 @@ function AppContent() {
       });
   }, [game, isPaused, userId]);
 
-  // Stop computer actions when the app is backgrounded; the next foreground visit resumes manually.
+  // Stop Hold’em computer actions when the app is backgrounded.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextState => {
       if (nextState !== 'active' && screen === 'game' && game) {
@@ -153,15 +168,35 @@ function AppContent() {
     return () => clearTimeout(timer);
   }, [game, screen, isPaused]);
 
+  function handleGameModeChange(mode: GameMode) {
+    setGameMode(mode);
+    if (mode === 'chinese') {
+      setComputerPlayers(current => Math.min(3, current));
+    }
+  }
+
   function startGame() {
-    const nextGame = createGame(computerPlayers);
+    if (gameMode === 'chinese') {
+      setChineseGame(createChinesePokerGame(computerPlayers));
+      setGame(null);
+      setIsPaused(false);
+      setScreen('chinese');
+      return;
+    }
+
     setSavedGame(null);
-    setGame(nextGame);
+    setGame(createGame(computerPlayers));
     setIsPaused(false);
     setScreen('game');
   }
 
-  function resumeSavedGame() {
+  function resumeSelectedGame() {
+    if (gameMode === 'chinese') {
+      if (!chineseGame) return;
+      setScreen('chinese');
+      return;
+    }
+
     if (!savedGame) return;
     setGame(savedGame);
     setIsPaused(false);
@@ -200,26 +235,53 @@ function AppContent() {
     setScreen('game');
   }
 
+  function handlePlaceChineseCard(card: Card, row: ChinesePokerRow) {
+    setChineseGame(current => current ? placeChineseCard(current, card, row) : current);
+  }
+
+  function handleRemoveChineseCard(card: Card, row: ChinesePokerRow) {
+    setChineseGame(current => current ? removeChineseCard(current, row, card) : current);
+  }
+
+  function handleSubmitChineseArrangement() {
+    setChineseGame(current => current ? submitChinesePokerArrangement(current) : current);
+  }
+
+  function handleNextChineseDeal() {
+    setChineseGame(current => current ? startNextChineseDeal(current) : current);
+  }
+
   return (
     <View style={styles.container}>
-      {screen === 'home' || !game ? (
+      {screen === 'home' ? (
         <HomeScreen
+          gameMode={gameMode}
+          onGameModeChange={handleGameModeChange}
           computerPlayers={computerPlayers}
           onComputerPlayersChange={setComputerPlayers}
           onStartGame={startGame}
-          hasSavedGame={Boolean(savedGame)}
-          onResumeGame={resumeSavedGame}
+          hasSavedGame={gameMode === 'chinese' ? Boolean(chineseGame) : Boolean(savedGame)}
+          onResumeGame={resumeSelectedGame}
           cloudStatus={cloudStatus}
           cloudMessage={cloudMessage}
         />
-      ) : screen === 'paused' ? (
+      ) : screen === 'chinese' && chineseGame ? (
+        <ChinesePokerScreen
+          game={chineseGame}
+          onBackToLobby={() => setScreen('home')}
+          onPlaceCard={handlePlaceChineseCard}
+          onRemoveCard={handleRemoveChineseCard}
+          onSubmit={handleSubmitChineseArrangement}
+          onNextDeal={handleNextChineseDeal}
+        />
+      ) : screen === 'paused' && game ? (
         <PauseScreen
           game={game}
           saveStatus={saveStatus}
           onResume={resumeCurrentGame}
           onReturnHome={returnToHome}
         />
-      ) : (
+      ) : game ? (
         <PokerTableScreen
           game={game}
           saveStatus={saveStatus}
@@ -227,6 +289,18 @@ function AppContent() {
           onAction={handleAction}
           onNextHand={handleNextHand}
           onNewGame={handleNewGame}
+        />
+      ) : (
+        <HomeScreen
+          gameMode={gameMode}
+          onGameModeChange={handleGameModeChange}
+          computerPlayers={computerPlayers}
+          onComputerPlayersChange={setComputerPlayers}
+          onStartGame={startGame}
+          hasSavedGame={gameMode === 'chinese' ? Boolean(chineseGame) : Boolean(savedGame)}
+          onResumeGame={resumeSelectedGame}
+          cloudStatus={cloudStatus}
+          cloudMessage={cloudMessage}
         />
       )}
     </View>
