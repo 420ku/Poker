@@ -48,6 +48,14 @@ describe('Texas Hold’em game', () => {
     );
   });
 
+  test('runs out the board when both players are all-in posting blinds', () => {
+    const game = createGame([1, 1]);
+
+    expect(game.status).toBe('match-over');
+    expect(game.communityCards).toHaveLength(5);
+    expect(game.players[0].stack + game.players[1].stack).toBe(2);
+  });
+
   test('settles a fold and returns the unmatched blind', () => {
     const result = applyAction(createGame(), { type: 'fold' });
 

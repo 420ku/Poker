@@ -69,6 +69,9 @@ export function PokerTableScreen({
     ? Math.min(maxRaiseTo, Math.max(minRaiseTo, raiseTarget || minRaiseTo))
     : maxRaiseTo;
   const revealComputer = game.status !== 'playing' && game.communityCards.length === 5;
+  const tableHint = game.status === 'playing'
+    ? (game.currentPlayerIndex === 0 ? 'YOUR MOVE' : 'COMPUTER THINKING')
+    : (game.status === 'match-over' ? 'SESSION COMPLETE' : 'HAND COMPLETE');
 
   useEffect(() => {
     setRaiseTarget(canMakeMinimumRaise ? minRaiseTo : maxRaiseTo);
@@ -128,11 +131,7 @@ export function PokerTableScreen({
                 <PlayingCard key={index} card={game.communityCards[index]} compact />
               ))}
             </View>
-            <Text style={styles.tableHint}>
-              {game.status === 'playing'
-                ? game.currentPlayerIndex === 0 ? 'YOUR MOVE' : 'COMPUTER THINKING'
-                : game.status === 'match-over' ? 'SESSION COMPLETE' : 'HAND COMPLETE'}
-            </Text>
+            <Text style={styles.tableHint}>{tableHint}</Text>
           </View>
         </View>
 

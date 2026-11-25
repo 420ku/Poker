@@ -85,7 +85,7 @@ export function createGame(
     ? nextActionablePlayer(players, dealerIndex)
     : dealerIndex;
 
-  return {
+  const initialGame: PokerGame = {
     handNumber,
     dealerIndex,
     players,
@@ -102,6 +102,8 @@ export function createGame(
     winners: [],
     message: currentPlayerIndex === 0 ? 'Your turn. Call, raise, or fold.' : 'Computer is deciding.',
   };
+
+  return currentPlayerIndex === null ? runOutAndShowdown(initialGame) : initialGame;
 }
 
 export function getCallAmount(game: PokerGame, playerIndex: number): number {
