@@ -82,6 +82,8 @@ Keep components focused. Keep poker rules out of screen components, and keep Sup
 
 The backend is authoritative for all game outcomes and consequential state.
 
+The current Hold’em and Chinese Poker modes are local, single-player games against computer opponents. Client-side dealing, bot decisions, and game state are acceptable for these casual play-only sessions; do not present them as tamper-proof, multiplayer-authoritative, or real-money systems. Any future human multiplayer, wagering, cash-value, or shared competitive mode must move consequential state and random dealing to a trusted backend before release.
+
 - Never trust the mobile client to shuffle/deal cards, choose random seeds, evaluate winners, validate betting actions, advance game phases, calculate pots, split pots, or modify stacks.
 - Generate and shuffle the deck on the server/database side using a cryptographically secure random source and a well-tested shuffle implementation. Do not expose the deck order, random seed, burn cards, or undealt cards to clients.
 - Implement consequential state transitions in transactional Postgres functions/RPC (or another explicitly approved trusted server-side component). Do not implement game authority solely in client state or Realtime callbacks.
