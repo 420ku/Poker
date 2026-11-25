@@ -172,10 +172,10 @@ function AppContent() {
     setGame(current => (current ? applyAction(current, action) : current));
   }
 
-  function pauseGame() {
+  function backToLobby() {
     if (game) setSavedGame(game);
     setIsPaused(true);
-    setScreen('paused');
+    setScreen('home');
   }
 
   function resumeCurrentGame() {
@@ -223,7 +223,7 @@ function AppContent() {
         <PokerTableScreen
           game={game}
           saveStatus={saveStatus}
-          onPause={pauseGame}
+          onBackToLobby={backToLobby}
           onAction={handleAction}
           onNextHand={handleNextHand}
           onNewGame={handleNewGame}

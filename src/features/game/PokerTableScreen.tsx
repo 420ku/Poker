@@ -9,7 +9,7 @@ type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
 interface PokerTableScreenProps {
   game: PokerGame;
   saveStatus: SaveStatus;
-  onPause: () => void;
+  onBackToLobby: () => void;
   onAction: (action: PokerAction) => void;
   onNextHand: () => void;
   onNewGame: () => void;
@@ -119,7 +119,7 @@ function PlayerSeat({
 export function PokerTableScreen({
   game,
   saveStatus,
-  onPause,
+  onBackToLobby,
   onAction,
   onNextHand,
   onNewGame,
@@ -160,9 +160,13 @@ export function PokerTableScreen({
   return (
     <View style={styles.screen}>
       <View style={styles.topBar}>
-        <Pressable accessibilityRole="button" onPress={onPause} style={styles.backButton}>
-          <Text style={styles.pauseGlyph}>Ⅱ</Text>
-          <Text style={styles.backText}>PAUSE</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Back to lobby. Game will be saved and paused."
+          onPress={onBackToLobby}
+          style={styles.backButton}>
+          <Text style={styles.backArrow}>‹</Text>
+          <Text style={styles.backText}>BACK TO LOBBY</Text>
         </Pressable>
         <View style={styles.topCenter}>
           <Text style={styles.topTitle}>TEXAS HOLD’EM</Text>
@@ -342,10 +346,10 @@ const styles = StyleSheet.create({
     minHeight: 62, paddingHorizontal: 18, flexDirection: 'row',
     alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#1b3528',
   },
-  backButton: { minWidth: 72, flexDirection: 'row', alignItems: 'center' },
+  backButton: { minWidth: 112, flexDirection: 'row', alignItems: 'center' },
   backArrow: { color: '#d5b36a', fontSize: 28, lineHeight: 30 },
-  pauseGlyph: { color: '#d5b36a', fontSize: 17, fontWeight: '900' },
-  backText: { marginLeft: 4, color: '#c7d0c8', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
+  
+  backText: { marginLeft: 4, color: '#c7d0c8', fontSize: 8, fontWeight: '800', letterSpacing: 0.6 },
   topCenter: { flex: 1, alignItems: 'center' },
   topTitle: { color: '#f0eadc', fontSize: 11, fontWeight: '900', letterSpacing: 1.7 },
   topSubTitle: { marginTop: 4, color: '#90a497', fontSize: 9, fontWeight: '700', letterSpacing: 1 },
