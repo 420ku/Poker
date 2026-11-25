@@ -5,7 +5,7 @@ export interface Card {
   suit: Suit;
 }
 
-export type PlayerId = 'human' | 'computer';
+export type PlayerId = string;
 export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';
 export type GameStatus = 'playing' | 'hand-over' | 'match-over';
 
@@ -23,9 +23,10 @@ export interface PlayerState {
 }
 
 export interface PokerGame {
+  computerCount: number;
   handNumber: number;
-  dealerIndex: 0 | 1;
-  players: [PlayerState, PlayerState];
+  dealerIndex: number;
+  players: PlayerState[];
   communityCards: Card[];
   deck: Card[];
   street: Street;

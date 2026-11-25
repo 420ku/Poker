@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { createGame, applyAction, chooseComputerAction, startNextHand } from './src/domain/poker/game';
+import { applyAction, chooseComputerAction, createGame, startNextHand } from './src/domain/poker/game';
 import type { PokerAction, PokerGame } from './src/domain/poker/types';
 import { HomeScreen } from './src/features/home/HomeScreen';
 import { PokerTableScreen } from './src/features/game/PokerTableScreen';
@@ -10,32 +10,40 @@ type Screen = 'home' | 'game';
 
 function AppContent() {
   const [screen, setScreen] = useState<Screen>('home');
+  const [computerPlayers, setComputerPlayers] = useState(1);
   const [game, setGame] = useState<PokerGame | null>(null);
 
   useEffect(() => {
-    if (screen !== 'game' || !game || game.status !== 'playing' || game.currentPlayerIndex !== 1) {
+    if (screen !== 'game' || !game || game.status !== 'playing' || game.currentPlayerIndex === null) {
       return undefined;
     }
+
+    const currentPlayer = game.players[game.currentPlayerIndex];
+    if (currentPlayer.id === 'human') return undefined;
 
     const timer = setTimeout(() => {
       setGame(current => {
         if (
           !current ||
           current.status !== 'playing' ||
-          current.currentPlayerIndex !== 1
+          current.currentPlayerIndex === null ||
+          current.players[current.currentPlayerIndex].id === 'human'
         ) {
           return current;
         }
 
-        return applyAction(current, chooseComputerAction(current));
+        return applyAction(
+          current,
+          chooseComputerAction(current, current.currentPlayerIndex),
+        );
       });
-    }, 750);
+    }, 650);
 
     return () => clearTimeout(timer);
   }, [game, screen]);
 
   function startGame() {
-    setGame(createGame());
+    setGame(createGame(computerPlayers));
     setScreen('game');
   }
 
@@ -44,17 +52,21 @@ function AppContent() {
   }
 
   function handleNextHand() {
-    setGame(current => (current ? startNextHand(current) : createGame()));
+    setGame(current => (current ? startNextHand(current) : createGame(computerPlayers)));
   }
 
   function handleNewGame() {
-    setGame(createGame());
+    setGame(current => createGame(current?.computerCount ?? computerPlayers));
   }
 
   return (
     <View style={styles.container}>
       {screen === 'home' || !game ? (
-        <HomeScreen onStartGame={startGame} />
+        <HomeScreen
+          computerPlayers={computerPlayers}
+          onComputerPlayersChange={setComputerPlayers}
+          onStartGame={startGame}
+        />
       ) : (
         <PokerTableScreen
           game={game}
@@ -80,13 +92,8 @@ function App() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#071812',
-  },
-  container: {
-    flex: 1,
-  },
+  safeArea: { flex: 1, backgroundColor: '#071812' },
+  container: { flex: 1 },
 });
 
 export default App;

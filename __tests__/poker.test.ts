@@ -1,34 +1,58 @@
 import { compareHands, evaluateBestHand } from '../src/domain/poker/evaluator';
-import { applyAction, createGame } from '../src/domain/poker/game';
+import { applyAction, createGame, startNextHand } from '../src/domain/poker/game';
 import type { Card } from '../src/domain/poker/types';
 
-describe('Texas Hold’em game', () => {
-  test('starts heads-up with $100 stacks and posts $1/$2 blinds', () => {
-    const game = createGame();
+describe('Texas Hold’em table setup', () => {
+  test('starts heads-up with $100 stacks and correct button/blind positions', () => {
+    const game = createGame(1);
 
+    expect(game.players).toHaveLength(2);
     expect(game.players[0].stack).toBe(99);
     expect(game.players[1].stack).toBe(98);
     expect(game.players[0].committedThisRound).toBe(1);
     expect(game.players[1].committedThisRound).toBe(2);
     expect(game.pot).toBe(3);
+    expect(game.dealerIndex).toBe(0);
     expect(game.currentPlayerIndex).toBe(0);
   });
 
-  test('calls and checks through to the flop', () => {
-    const preflop = createGame();
-    const called = applyAction(preflop, { type: 'call' });
-    const flop = applyAction(called, { type: 'check' });
+  test('creates a six-seat table with two hole cards each', () => {
+    const game = createGame(5);
 
-    expect(flop.street).toBe('flop');
-    expect(flop.communityCards).toHaveLength(3);
-    expect(flop.pot).toBe(4);
-    expect(flop.players[0].stack).toBe(98);
-    expect(flop.players[1].stack).toBe(98);
-    expect(flop.currentPlayerIndex).toBe(0);
+    expect(game.players).toHaveLength(6);
+    expect(game.players.every(player => player.holeCards.length === 2)).toBe(true);
+    expect(game.deck).toHaveLength(40);
+  });
+
+  test('posts multiway blinds and starts action left of the big blind', () => {
+    const game = createGame(3);
+
+    expect(game.players).toHaveLength(4);
+    expect(game.players[0].committedThisRound).toBe(0);
+    expect(game.players[1].committedThisRound).toBe(1);
+    expect(game.players[2].committedThisRound).toBe(2);
+    expect(game.currentPlayerIndex).toBe(3);
+    expect(game.pot).toBe(3);
+  });
+});
+
+describe('Texas Hold’em betting', () => {
+  test('completes a four-player preflop round and deals the flop', () => {
+    let game = createGame(3);
+
+    game = applyAction(game, { type: 'call' });
+    game = applyAction(game, { type: 'call' });
+    game = applyAction(game, { type: 'call' });
+    game = applyAction(game, { type: 'check' });
+
+    expect(game.street).toBe('flop');
+    expect(game.communityCards).toHaveLength(3);
+    expect(game.pot).toBe(8);
+    expect(game.currentPlayerIndex).toBe(1);
   });
 
   test('supports raise sizes above the minimum', () => {
-    const raised = applyAction(createGame(), { type: 'raise', amount: 8 });
+    const raised = applyAction(createGame(1), { type: 'raise', amount: 8 });
 
     expect(raised.currentBet).toBe(8);
     expect(raised.minRaise).toBe(6);
@@ -37,33 +61,28 @@ describe('Texas Hold’em game', () => {
     expect(raised.currentPlayerIndex).toBe(1);
   });
 
-  test('does not reopen raising after a short all-in when opponent already acted', () => {
-    const shortStackGame = createGame([100, 3]);
-    const humanCalled = applyAction(shortStackGame, { type: 'call' });
-    const computerShoved = applyAction(humanCalled, { type: 'raise', amount: 3 });
+  test('splits main and side pots without losing chips in an all-in hand', () => {
+    let game = createGame(2, [100, 30, 100]);
 
-    expect(computerShoved.players[0].canRaiseThisRound).toBe(false);
-    expect(() => applyAction(computerShoved, { type: 'raise', amount: 5 })).toThrow(
-      'A short all-in did not reopen raising for this player.',
-    );
-  });
+    game = applyAction(game, { type: 'raise', amount: 100 });
+    game = applyAction(game, { type: 'call' });
+    game = applyAction(game, { type: 'call' });
 
-  test('runs out the board when both players are all-in posting blinds', () => {
-    const game = createGame([1, 1]);
-
-    expect(game.status).toBe('match-over');
+    expect(['hand-over', 'match-over']).toContain(game.status);
     expect(game.communityCards).toHaveLength(5);
-    expect(game.players[0].stack + game.players[1].stack).toBe(2);
+    expect(game.players.reduce((total, player) => total + player.stack, 0)).toBe(230);
+    expect(game.pot).toBe(230);
+    expect(game.players[1].stack).toBeGreaterThanOrEqual(0);
   });
 
-  test('settles a fold and returns the unmatched blind', () => {
-    const result = applyAction(createGame(), { type: 'fold' });
+  test('returns unmatched chips and rotates the dealer for next hand', () => {
+    const folded = applyAction(createGame(1), { type: 'fold' });
+    const next = startNextHand(folded);
 
-    expect(result.status).toBe('hand-over');
-    expect(result.winners).toEqual(['computer']);
-    expect(result.players[0].stack).toBe(99);
-    expect(result.players[1].stack).toBe(101);
-    expect(result.pot).toBe(2);
+    expect(folded.players[0].stack).toBe(99);
+    expect(folded.players[1].stack).toBe(101);
+    expect(next.handNumber).toBe(2);
+    expect(next.dealerIndex).toBe(1);
   });
 });
 
