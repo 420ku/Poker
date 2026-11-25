@@ -27,6 +27,27 @@ describe('Texas Hold’em game', () => {
     expect(flop.currentPlayerIndex).toBe(0);
   });
 
+  test('supports raise sizes above the minimum', () => {
+    const raised = applyAction(createGame(), { type: 'raise', amount: 8 });
+
+    expect(raised.currentBet).toBe(8);
+    expect(raised.minRaise).toBe(6);
+    expect(raised.players[0].committedThisRound).toBe(8);
+    expect(raised.players[0].stack).toBe(92);
+    expect(raised.currentPlayerIndex).toBe(1);
+  });
+
+  test('does not reopen raising after a short all-in when opponent already acted', () => {
+    const shortStackGame = createGame([100, 3]);
+    const humanCalled = applyAction(shortStackGame, { type: 'call' });
+    const computerShoved = applyAction(humanCalled, { type: 'raise', amount: 3 });
+
+    expect(computerShoved.players[0].canRaiseThisRound).toBe(false);
+    expect(() => applyAction(computerShoved, { type: 'raise', amount: 5 })).toThrow(
+      'A short all-in did not reopen raising for this player.',
+    );
+  });
+
   test('settles a fold and returns the unmatched blind', () => {
     const result = applyAction(createGame(), { type: 'fold' });
 

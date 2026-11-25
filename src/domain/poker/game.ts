@@ -33,6 +33,7 @@ function createPlayer(id: PlayerId, stack: number): PlayerState {
     folded: false,
     allIn: false,
     actedThisRound: false,
+    canRaiseThisRound: true,
   };
 }
 
@@ -164,7 +165,11 @@ function settleHand(
 
 function settleFold(game: PokerGame, winnerId: PlayerId): PokerGame {
   const winner = winnerId === 'human' ? 'You' : 'Computer';
-  return settleHand(game, [winnerId], winner + ' wins the hand. ' + (winnerId === 'human' ? 'Your opponent folded.' : 'You folded.'));
+  return settleHand(
+    game,
+    [winnerId],
+    winner + ' wins the hand. ' + (winnerId === 'human' ? 'Your opponent folded.' : 'You folded.'),
+  );
 }
 
 function settleShowdown(game: PokerGame): PokerGame {
@@ -187,20 +192,34 @@ function settleShowdown(game: PokerGame): PokerGame {
 
 function drawCards(game: PokerGame, amount: number): { deck: Card[]; cards: Card[] } {
   const deck = [...game.deck];
-  const cards = deck.splice(Math.max(0, deck.length - amount), amount).reverse();
+  deck.pop();
+  const cards: Card[] = [];
+  for (let index = 0; index < amount; index += 1) {
+    const card = deck.pop();
+    if (card) cards.push(card);
+  }
   return { deck, cards };
 }
 
 function runOutAndShowdown(game: PokerGame): PokerGame {
-  const remaining = 5 - game.communityCards.length;
-  const draw = drawCards(game, remaining);
-  const completed: PokerGame = {
+  const deck = [...game.deck];
+  const communityCards = [...game.communityCards];
+
+  while (communityCards.length < 5) {
+    deck.pop();
+    const cardsToDeal = communityCards.length === 0 ? 3 : 1;
+    for (let index = 0; index < cardsToDeal && communityCards.length < 5; index += 1) {
+      const card = deck.pop();
+      if (card) communityCards.push(card);
+    }
+  }
+
+  return settleShowdown({
     ...game,
-    deck: draw.deck,
-    communityCards: [...game.communityCards, ...draw.cards],
+    deck,
+    communityCards,
     street: 'showdown',
-  };
-  return settleShowdown(completed);
+  });
 }
 
 function firstPostFlopActor(game: PokerGame, players: [PlayerState, PlayerState]): number | null {
@@ -224,11 +243,13 @@ function advanceStreet(game: PokerGame): PokerGame {
       ...game.players[0],
       committedThisRound: 0,
       actedThisRound: false,
+      canRaiseThisRound: true,
     },
     {
       ...game.players[1],
       committedThisRound: 0,
       actedThisRound: false,
+      canRaiseThisRound: true,
     },
   ];
 
@@ -319,7 +340,11 @@ export function applyAction(game: PokerGame, action: PokerAction): PokerGame {
     const maximumRaiseTo = getMaximumRaiseTo(player);
     const raiseSize = action.amount - currentBet;
     const isAllInRaise = action.amount === maximumRaiseTo;
+    const isFullRaise = raiseSize >= minRaise;
 
+    if (!player.canRaiseThisRound) {
+      throw new Error('A short all-in did not reopen raising for this player.');
+    }
     if (action.amount <= currentBet || action.amount > maximumRaiseTo) {
       throw new Error('Raise amount is outside the legal range.');
     }
@@ -334,13 +359,15 @@ export function applyAction(game: PokerGame, action: PokerAction): PokerGame {
     player.allIn = player.stack === 0;
     player.actedThisRound = true;
     currentBet = action.amount;
-    if (raiseSize >= minRaise) {
+    if (isFullRaise) {
       minRaise = raiseSize;
     }
 
     players.forEach((otherPlayer, index) => {
       if (index !== playerIndex && !otherPlayer.folded && !otherPlayer.allIn) {
+        const hadActed = otherPlayer.actedThisRound;
         otherPlayer.actedThisRound = false;
+        otherPlayer.canRaiseThisRound = isFullRaise || !hadActed;
       }
     });
 
@@ -410,14 +437,14 @@ export function chooseComputerAction(game: PokerGame): PokerAction {
   const player = game.players[playerIndex];
   const toCall = getCallAmount(game, playerIndex);
   const cards = [...player.holeCards, ...game.communityCards];
-  const strength =
-    game.communityCards.length >= 3
-      ? evaluateBestHand(cards).category + (evaluateBestHand(cards).kickers[0] ?? 0) / 100
-      : preflopStrength(player.holeCards);
+  const evaluation = game.communityCards.length >= 3 ? evaluateBestHand(cards) : null;
+  const strength = evaluation
+    ? evaluation.category + (evaluation.kickers[0] ?? 0) / 100
+    : preflopStrength(player.holeCards);
 
   const minimumRaiseTo = getMinimumRaiseTo(game);
   const maximumRaiseTo = getMaximumRaiseTo(player);
-  const canRaise = maximumRaiseTo > game.currentBet;
+  const canRaise = player.canRaiseThisRound && maximumRaiseTo > game.currentBet;
   const canMakeMinimumRaise = maximumRaiseTo >= minimumRaiseTo;
 
   if (toCall > 0) {
@@ -425,14 +452,14 @@ export function chooseComputerAction(game: PokerGame): PokerAction {
       return { type: 'fold' };
     }
 
-    if (strength >= 2.8 && canMakeMinimumRaise && Math.random() < 0.22) {
+    if (strength >= 2.8 && canRaise && canMakeMinimumRaise && Math.random() < 0.22) {
       return { type: 'raise', amount: minimumRaiseTo };
     }
 
     return { type: 'call' };
   }
 
-  if (strength >= 2.8 && canMakeMinimumRaise && Math.random() < 0.35) {
+  if (strength >= 2.8 && canRaise && canMakeMinimumRaise && Math.random() < 0.35) {
     return { type: 'raise', amount: minimumRaiseTo };
   }
 

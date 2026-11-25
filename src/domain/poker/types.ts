@@ -19,6 +19,7 @@ export interface PlayerState {
   folded: boolean;
   allIn: boolean;
   actedThisRound: boolean;
+  canRaiseThisRound: boolean;
 }
 
 export interface PokerGame {

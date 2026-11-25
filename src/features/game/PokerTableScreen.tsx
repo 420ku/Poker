@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { getCallAmount, getMaximumRaiseTo, getMinimumRaiseTo } from '../../domain/poker/game';
 import type { PokerAction, PokerGame } from '../../domain/poker/types';
@@ -16,18 +16,26 @@ interface ActionButtonProps {
   label: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'danger';
+  disabled?: boolean;
 }
 
-function ActionButton({ label, onPress, variant = 'secondary' }: ActionButtonProps) {
+function ActionButton({
+  label,
+  onPress,
+  variant = 'secondary',
+  disabled = false,
+}: ActionButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.actionButton,
         variant === 'primary' && styles.primaryAction,
         variant === 'danger' && styles.dangerAction,
-        pressed && styles.pressedAction,
+        disabled && styles.disabledAction,
+        pressed && !disabled && styles.pressedAction,
       ]}>
       <Text style={[
         styles.actionText,
@@ -47,6 +55,7 @@ export function PokerTableScreen({
   onNextHand,
   onNewGame,
 }: PokerTableScreenProps) {
+  const [raiseTarget, setRaiseTarget] = useState(0);
   const human = game.players[0];
   const computer = game.players[1];
   const humanTurn = game.status === 'playing' && game.currentPlayerIndex === 0;
@@ -54,9 +63,25 @@ export function PokerTableScreen({
   const callAmount = getCallAmount(game, 0);
   const minRaiseTo = getMinimumRaiseTo(game);
   const maxRaiseTo = getMaximumRaiseTo(human);
-  const canRaise = maxRaiseTo > game.currentBet;
+  const canRaise = human.canRaiseThisRound && maxRaiseTo > game.currentBet;
   const canMakeMinimumRaise = maxRaiseTo >= minRaiseTo;
+  const selectedRaiseTo = canMakeMinimumRaise
+    ? Math.min(maxRaiseTo, Math.max(minRaiseTo, raiseTarget || minRaiseTo))
+    : maxRaiseTo;
   const revealComputer = game.status !== 'playing' && game.communityCards.length === 5;
+
+  useEffect(() => {
+    setRaiseTarget(canMakeMinimumRaise ? minRaiseTo : maxRaiseTo);
+  }, [
+    game.handNumber,
+    game.street,
+    game.currentBet,
+    human.committedThisRound,
+    human.stack,
+    minRaiseTo,
+    maxRaiseTo,
+    canMakeMinimumRaise,
+  ]);
 
   return (
     <View style={styles.screen}>
@@ -148,6 +173,34 @@ export function PokerTableScreen({
                     {callAmount > 0 ? '$' + callAmount : 'No bet to call'}
                   </Text>
                 </View>
+                {canRaise && canMakeMinimumRaise && (
+                  <View style={styles.raiseSizer}>
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={selectedRaiseTo <= minRaiseTo}
+                      onPress={() => setRaiseTarget(Math.max(minRaiseTo, selectedRaiseTo - 1))}
+                      style={styles.sizeButton}>
+                      <Text style={styles.sizeButtonText}>−</Text>
+                    </Pressable>
+                    <View style={styles.raiseAmount}>
+                      <Text style={styles.raiseAmountLabel}>RAISE TO</Text>
+                      <Text style={styles.raiseAmountValue}>{'$' + selectedRaiseTo}</Text>
+                    </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={selectedRaiseTo >= maxRaiseTo}
+                      onPress={() => setRaiseTarget(Math.min(maxRaiseTo, selectedRaiseTo + 1))}
+                      style={styles.sizeButton}>
+                      <Text style={styles.sizeButtonText}>+</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setRaiseTarget(maxRaiseTo)}
+                      style={styles.maxButton}>
+                      <Text style={styles.maxButtonText}>MAX</Text>
+                    </Pressable>
+                  </View>
+                )}
                 <View style={styles.actionGrid}>
                   <ActionButton label="Fold" variant="danger" onPress={() => onAction({ type: 'fold' })} />
                   {callAmount > 0 ? (
@@ -157,13 +210,11 @@ export function PokerTableScreen({
                   )}
                   {canRaise && (
                     <ActionButton
-                      label={canMakeMinimumRaise
-                        ? (game.currentBet === 0 ? 'Bet $' : 'Raise to $') + minRaiseTo
-                        : 'All-in $' + maxRaiseTo}
+                      label={canMakeMinimumRaise ? 'Raise to $' + selectedRaiseTo : 'All-in $' + maxRaiseTo}
                       variant="primary"
                       onPress={() => onAction({
                         type: 'raise',
-                        amount: canMakeMinimumRaise ? minRaiseTo : maxRaiseTo,
+                        amount: canMakeMinimumRaise ? selectedRaiseTo : maxRaiseTo,
                       })}
                     />
                   )}
@@ -257,10 +308,25 @@ const styles = StyleSheet.create({
   actionMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 9 },
   actionMetaText: { color: '#94a99a', fontSize: 9, fontWeight: '900', letterSpacing: 1.4 },
   actionMetaValue: { color: '#f0e6cb', fontSize: 12, fontWeight: '800' },
+  raiseSizer: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    marginBottom: 10, padding: 7, borderRadius: 12, backgroundColor: '#11291f',
+  },
+  sizeButton: {
+    width: 36, height: 34, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 9, backgroundColor: '#294735',
+  },
+  sizeButtonText: { color: '#f1eadb', fontSize: 20, fontWeight: '700' },
+  raiseAmount: { flex: 1, alignItems: 'center' },
+  raiseAmountLabel: { color: '#8ea594', fontSize: 8, fontWeight: '900', letterSpacing: 1.4 },
+  raiseAmountValue: { marginTop: 2, color: '#f0e6cb', fontSize: 14, fontWeight: '900' },
+  maxButton: { marginLeft: 7, paddingHorizontal: 11, paddingVertical: 9, borderRadius: 8, backgroundColor: '#3a4b34' },
+  maxButtonText: { color: '#e5d095', fontSize: 9, fontWeight: '900', letterSpacing: 1 },
   actionGrid: { flexDirection: 'row', gap: 8 },
   actionButton: { flex: 1, minHeight: 48, paddingHorizontal: 8, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#203b2d', borderWidth: 1, borderColor: '#3b5a44' },
   primaryAction: { backgroundColor: '#d5b36a', borderColor: '#e3c783' },
   dangerAction: { backgroundColor: '#392322', borderColor: '#75413c' },
+  disabledAction: { opacity: 0.4 },
   pressedAction: { opacity: 0.78 },
   actionText: { color: '#e4eadf', fontSize: 11, fontWeight: '900' },
   primaryActionText: { color: '#16251b' },
