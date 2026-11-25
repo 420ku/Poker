@@ -47,7 +47,7 @@ Keep this socket bound to your local user. Do not expose the Podman API over TCP
 Run from the repository root:
 
 ```sh
-cd ~/Developer/Poker
+cd /path/to/Poker  # replace with your actual local clone path
 
 # Install and pin the Supabase CLI in this project
 bun add --dev supabase
