@@ -31,8 +31,8 @@ function createPlayer(id: PlayerId, stack: number, seat: number): PlayerState {
     holeCards: [],
     committedThisRound: 0,
     committedTotal: 0,
-    folded: false,
-    allIn: stack <= 0,
+    folded: stack <= 0,
+    allIn: false,
     actedThisRound: false,
     canRaiseThisRound: true,
   };
@@ -203,7 +203,8 @@ function settleHand(
   forcedWinnerId?: PlayerId,
 ): PokerGame {
   const settlement = settlePotLayers(game, evaluations, forcedWinnerId);
-  const matchOver = getLivePlayers(settlement.players).length <= 1;
+  const humanStack = settlement.players.find(player => player.id === 'human')?.stack ?? 0;
+  const matchOver = humanStack <= 0 || getLivePlayers(settlement.players).length <= 1;
 
   return {
     ...game,
