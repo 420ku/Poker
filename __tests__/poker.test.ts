@@ -24,6 +24,21 @@ describe('Texas Hold’em table setup', () => {
     expect(game.deck).toHaveLength(40);
   });
 
+  test('serializes a complete game snapshot for pause and resume', () => {
+    const game = createGame(4);
+    const restored = JSON.parse(JSON.stringify(game)) as typeof game;
+
+    expect(restored.players.map(player => player.stack)).toEqual(
+      game.players.map(player => player.stack),
+    );
+    expect(restored.players.map(player => player.holeCards)).toEqual(
+      game.players.map(player => player.holeCards),
+    );
+    expect(restored.deck).toEqual(game.deck);
+    expect(restored.currentPlayerIndex).toBe(game.currentPlayerIndex);
+    expect(restored.computerCount).toBe(4);
+  });
+
   test('posts multiway blinds and starts action left of the big blind', () => {
     const game = createGame(3);
 

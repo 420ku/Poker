@@ -4,9 +4,12 @@ import { getCallAmount, getMaximumRaiseTo, getMinimumRaiseTo } from '../../domai
 import type { PlayerState, PokerAction, PokerGame } from '../../domain/poker/types';
 import { PlayingCard } from './PlayingCard';
 
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
+
 interface PokerTableScreenProps {
   game: PokerGame;
-  onBack: () => void;
+  saveStatus: SaveStatus;
+  onPause: () => void;
   onAction: (action: PokerAction) => void;
   onNextHand: () => void;
   onNewGame: () => void;
@@ -115,7 +118,8 @@ function PlayerSeat({
 
 export function PokerTableScreen({
   game,
-  onBack,
+  saveStatus,
+  onPause,
   onAction,
   onNextHand,
   onNewGame,
@@ -134,6 +138,11 @@ export function PokerTableScreen({
     : maxRaiseTo;
   const revealCards = game.status !== 'playing' && game.communityCards.length === 5;
   const opponents = game.players.filter(player => player.id !== 'human');
+  const saveLabel =
+    saveStatus === 'saving' ? 'SAVING' :
+    saveStatus === 'saved' ? 'SAVED' :
+    saveStatus === 'error' ? 'SAVE ERROR' :
+    saveStatus === 'offline' ? 'OFFLINE' : 'LOCAL';
 
   useEffect(() => {
     setRaiseTarget(canMakeMinimumRaise ? minRaiseTo : maxRaiseTo);
@@ -151,9 +160,9 @@ export function PokerTableScreen({
   return (
     <View style={styles.screen}>
       <View style={styles.topBar}>
-        <Pressable accessibilityRole="button" onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backArrow}>‹</Text>
-          <Text style={styles.backText}>LOBBY</Text>
+        <Pressable accessibilityRole="button" onPress={onPause} style={styles.backButton}>
+          <Text style={styles.pauseGlyph}>Ⅱ</Text>
+          <Text style={styles.backText}>PAUSE</Text>
         </Pressable>
         <View style={styles.topCenter}>
           <Text style={styles.topTitle}>TEXAS HOLD’EM</Text>
@@ -161,7 +170,14 @@ export function PokerTableScreen({
             HAND {String(game.handNumber).padStart(2, '0')} · {game.players.length} SEATS
           </Text>
         </View>
-        <View style={styles.blindsPill}><Text style={styles.blindsText}>$1 / $2</Text></View>
+        <View style={styles.topRight}>
+          <Text style={[
+            styles.saveStatus,
+            saveStatus === 'saved' && styles.saveStatusSaved,
+            saveStatus === 'error' && styles.saveStatusError,
+          ]}>{saveLabel}</Text>
+          <View style={styles.blindsPill}><Text style={styles.blindsText}>$1 / $2</Text></View>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -328,10 +344,15 @@ const styles = StyleSheet.create({
   },
   backButton: { minWidth: 72, flexDirection: 'row', alignItems: 'center' },
   backArrow: { color: '#d5b36a', fontSize: 28, lineHeight: 30 },
+  pauseGlyph: { color: '#d5b36a', fontSize: 17, fontWeight: '900' },
   backText: { marginLeft: 4, color: '#c7d0c8', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
   topCenter: { flex: 1, alignItems: 'center' },
   topTitle: { color: '#f0eadc', fontSize: 11, fontWeight: '900', letterSpacing: 1.7 },
   topSubTitle: { marginTop: 4, color: '#90a497', fontSize: 9, fontWeight: '700', letterSpacing: 1 },
+  topRight: { alignItems: 'flex-end', gap: 5 },
+  saveStatus: { color: '#91a397', fontSize: 7, fontWeight: '900', letterSpacing: 0.8 },
+  saveStatusSaved: { color: '#82bd90' },
+  saveStatusError: { color: '#e38a82' },
   blindsPill: { minWidth: 72, alignItems: 'center', borderRadius: 14, paddingHorizontal: 9, paddingVertical: 7, backgroundColor: '#183426' },
   blindsText: { color: '#dfc584', fontSize: 10, fontWeight: '900' },
   content: { paddingHorizontal: 17, paddingTop: 15, paddingBottom: 24 },

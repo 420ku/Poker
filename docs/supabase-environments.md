@@ -148,7 +148,7 @@ When the Supabase client is implemented, the React Native app should receive onl
 
 The Supabase publishable key is designed for client applications, but it is not an authorization boundary. Enable and test RLS for every exposed table and validate every RPC. Never bundle a `service_role` key, secret API key, database password, or privileged token into the mobile app.
 
-This repository is currently a React Native CLI starter and does not yet load Supabase environment variables. Add a React Native-compatible environment/configuration package as part of the Supabase client integration; do not assume Expo's `EXPO_PUBLIC_*` variables work here.
+The React Native CLI app loads only the Supabase URL and publishable key through `react-native-config`; do not assume Expo's `EXPO_PUBLIC_*` variables work here.
 
 ## Daily commands
 

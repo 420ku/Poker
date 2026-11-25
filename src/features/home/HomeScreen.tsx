@@ -5,6 +5,10 @@ interface HomeScreenProps {
   computerPlayers: number;
   onComputerPlayersChange: (count: number) => void;
   onStartGame: () => void;
+  hasSavedGame: boolean;
+  onResumeGame: () => void;
+  cloudStatus: 'connecting' | 'connected' | 'offline' | 'error';
+  cloudMessage: string;
 }
 
 const COMPUTER_OPTIONS = [1, 2, 3, 4, 5];
@@ -13,6 +17,10 @@ export function HomeScreen({
   computerPlayers,
   onComputerPlayersChange,
   onStartGame,
+  hasSavedGame,
+  onResumeGame,
+  cloudStatus,
+  cloudMessage,
 }: HomeScreenProps) {
   return (
     <View style={styles.screen}>
@@ -103,6 +111,30 @@ export function HomeScreen({
             </Text>
             <Text style={styles.playButtonArrow}>→</Text>
           </Pressable>
+          {hasSavedGame && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={onResumeGame}
+              style={({ pressed }) => [styles.resumeButton, pressed && styles.buttonPressed]}>
+              <Text style={styles.resumeButtonText}>Resume Saved Game</Text>
+            </Pressable>
+          )}
+          <View style={styles.cloudRow}>
+            <View style={[
+              styles.cloudDot,
+              cloudStatus === 'connected' && styles.cloudDotConnected,
+              cloudStatus === 'error' && styles.cloudDotError,
+            ]} />
+            <Text style={styles.cloudText}>
+              {cloudStatus === 'connecting'
+                ? 'Connecting to Supabase…'
+                : cloudStatus === 'connected'
+                  ? 'Cloud saves enabled'
+                  : cloudStatus === 'error'
+                    ? cloudMessage || 'Cloud save unavailable'
+                    : cloudMessage || 'Playing offline · Cloud saves disabled'}
+            </Text>
+          </View>
           <Text style={styles.note}>Free virtual chips · No real-money wagering</Text>
         </View>
 
@@ -180,7 +212,17 @@ const styles = StyleSheet.create({
   buttonPressed: { opacity: 0.8, transform: [{ scale: 0.99 }] },
   playButtonText: { color: '#14251b', fontSize: 14, fontWeight: '900' },
   playButtonArrow: { marginLeft: 10, color: '#14251b', fontSize: 22, fontWeight: '700' },
-  note: { marginTop: 12, color: '#83988a', fontSize: 10, textAlign: 'center' },
+  resumeButton: {
+    minHeight: 48, marginTop: 10, borderRadius: 13, alignItems: 'center',
+    justifyContent: 'center', backgroundColor: '#203b2d', borderWidth: 1, borderColor: '#52633f',
+  },
+  resumeButtonText: { color: '#e6d095', fontSize: 13, fontWeight: '900' },
+  cloudRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 14 },
+  cloudDot: { width: 6, height: 6, borderRadius: 4, marginRight: 7, backgroundColor: '#d5b36a' },
+  cloudDotConnected: { backgroundColor: '#78bd8d' },
+  cloudDotError: { backgroundColor: '#d66f68' },
+  cloudText: { flexShrink: 1, color: '#83988a', fontSize: 9, textAlign: 'center' },
+  note: { marginTop: 9, color: '#83988a', fontSize: 10, textAlign: 'center' },
   footer: { marginTop: 'auto', paddingTop: 25 },
   footerTitle: { color: '#d5b36a', fontSize: 9, fontWeight: '800', letterSpacing: 2 },
   footerText: { marginTop: 8, color: '#83988a', fontSize: 12, lineHeight: 18 },
