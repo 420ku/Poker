@@ -2,10 +2,10 @@
 
 ## Project overview
 
-- This repository is a React Native CLI application for a Texas Hold'em poker game.
+- This repository is a React Native CLI poker app with Texas Hold’em and Chinese Poker modes, currently played against local computer opponents.
 - Current stack: React Native 0.88.1, React 19.3.0, TypeScript 6, Jest 29, and ESLint with the React Native config.
 - Node.js requirement: >= 22.11.0.
-- The repository currently contains the React Native starter screen. Do not assume poker features, Supabase integration, source folders, or database schema already exist.
+- The app includes Texas Hold’em domain logic and screens, Chinese Poker domain logic and screens, and Supabase-backed Hold’em session saves. Inspect current source and migrations before changing these systems.
 - Supabase is the planned backend: use Supabase Auth, Postgres, Row Level Security (RLS), database functions/RPC, and Realtime where appropriate. Do not introduce a separate backend server unless a task specifically requires one.
 
 ## Working rules
@@ -127,7 +127,7 @@ The backend is authoritative for all game outcomes and consequential state.
 
 ## Testing expectations
 
-- Put poker-domain tests around card parsing, deck uniqueness, shuffle invariants, hand ranking, kicker comparisons, ace-low straights, ties, betting legality, side pots, all-ins, odd chips, and heads-up action order.
+- Put poker-domain tests around card parsing, deck uniqueness, shuffle invariants, hand ranking, kicker comparisons, ace-low straights, ties, betting legality, side pots, all-ins, odd chips, and heads-up action order. For Chinese Poker, test thirteen-card deals, 3-5-5 arrangement validation, bot layouts, row comparisons, sweeps, ties, and zero-sum scoring.
 - Test the evaluator against known hands and exhaustive/representative edge cases. Do not use snapshot-only tests for poker correctness.
 - Test backend RPC functions for valid actions, invalid/out-of-turn actions, stale versions, duplicate action IDs, concurrent actions, disconnected players, and complete hand settlement.
 - Test RLS with multiple authenticated users and verify that a player cannot read another player's hole cards or mutate another player's seat/stack.
