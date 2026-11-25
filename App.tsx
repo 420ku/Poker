@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StatusBar, StyleSheet, View } from 'react-native';
+import { AppState, StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { applyAction, chooseComputerAction, createGame, startNextHand } from './src/domain/poker/game';
 import type { PokerAction, PokerGame } from './src/domain/poker/types';
@@ -104,6 +104,19 @@ function AppContent() {
         }
       });
   }, [game, isPaused, userId]);
+
+  // Stop computer actions when the app is backgrounded; the next foreground visit resumes manually.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState !== 'active' && screen === 'game' && game) {
+        setSavedGame(game);
+        setIsPaused(true);
+        setScreen('paused');
+      }
+    });
+
+    return () => subscription.remove();
+  }, [game, screen]);
 
   useEffect(() => {
     if (
