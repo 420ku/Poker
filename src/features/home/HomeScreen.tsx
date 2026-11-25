@@ -182,7 +182,7 @@ export function HomeScreen({
             ]} />
             <Text style={styles.cloudText}>
               {isChinesePoker
-                ? 'Chinese Poker deal stays on this device until you leave the app.'
+                ? 'Chinese Poker progress is local and is not synced to Supabase.'
                 : cloudStatus === 'connecting'
                   ? 'Connecting to Supabase…'
                   : cloudStatus === 'connected'
