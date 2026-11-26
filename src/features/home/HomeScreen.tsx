@@ -15,6 +15,12 @@ interface HomeScreenProps {
   cloudMessage: string;
   walletBalanceCredits: number;
   onOpenWallet: () => void;
+  isGoogleAccount: boolean;
+  authEmail: string | null;
+  authLoading: boolean;
+  authError: string;
+  canSignInWithGoogle: boolean;
+  onGoogleSignIn: () => void;
 }
 
 export function HomeScreen({
@@ -29,6 +35,12 @@ export function HomeScreen({
   cloudMessage,
   walletBalanceCredits,
   onOpenWallet,
+  isGoogleAccount,
+  authEmail,
+  authLoading,
+  authError,
+  canSignInWithGoogle,
+  onGoogleSignIn,
 }: HomeScreenProps) {
   const computerOptions = gameMode === 'chinese' ? [1, 2, 3] : [1, 2, 3, 4, 5];
   const isChinesePoker = gameMode === 'chinese';
@@ -52,6 +64,36 @@ export function HomeScreen({
           </View>
           <Text style={styles.walletAction}>MANAGE →</Text>
         </Pressable>
+
+        <View style={styles.accountCard}>
+          <View style={styles.accountRow}>
+            <View style={styles.accountInfo}>
+              <Text style={styles.accountEyebrow}>
+                {isGoogleAccount ? 'GOOGLE ACCOUNT' : 'GUEST PROFILE'}
+              </Text>
+              <Text style={styles.accountDescription}>
+                {isGoogleAccount
+                  ? authEmail ?? 'Google account connected'
+                  : 'Connect Google to keep your wallet and saved games with your account.'}
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !canSignInWithGoogle || authLoading || isGoogleAccount }}
+              disabled={!canSignInWithGoogle || authLoading || isGoogleAccount}
+              onPress={onGoogleSignIn}
+              style={({ pressed }) => [
+                styles.googleButton,
+                (!canSignInWithGoogle || authLoading || isGoogleAccount) && styles.googleButtonDisabled,
+                pressed && styles.optionPressed,
+              ]}>
+              <Text style={styles.googleButtonText}>
+                {isGoogleAccount ? 'CONNECTED' : authLoading ? 'OPENING…' : 'SIGN IN'}
+              </Text>
+            </Pressable>
+          </View>
+          {authError ? <Text style={styles.authError}>{authError}</Text> : null}
+        </View>
 
         <View style={styles.hero}>
           <Text style={styles.eyebrow}>YOUR SEAT IS WAITING</Text>
@@ -248,6 +290,21 @@ const styles = StyleSheet.create({
   walletEyebrow: { color: '#d5b36a', fontSize: 8, fontWeight: '900', letterSpacing: 1.4 },
   walletBalance: { marginTop: 5, color: '#f0eadc', fontSize: 16, fontWeight: '900' },
   walletAction: { color: '#d5b36a', fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
+  accountCard: {
+    marginTop: 10, padding: 13, borderRadius: 13, backgroundColor: '#10251b',
+    borderWidth: 1, borderColor: '#284534',
+  },
+  accountRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  accountInfo: { flex: 1 },
+  accountEyebrow: { color: '#d5b36a', fontSize: 8, fontWeight: '900', letterSpacing: 1.2 },
+  accountDescription: { marginTop: 4, color: '#a9b9ae', fontSize: 10, lineHeight: 15 },
+  googleButton: {
+    minHeight: 37, justifyContent: 'center', paddingHorizontal: 12,
+    borderRadius: 9, backgroundColor: '#d5b36a',
+  },
+  googleButtonDisabled: { opacity: 0.5 },
+  googleButtonText: { color: '#14251b', fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
+  authError: { marginTop: 8, color: '#edaaa2', fontSize: 10, lineHeight: 14 },
   hero: { paddingTop: 24, paddingBottom: 22 },
   eyebrow: { color: '#d5b36a', fontSize: 10, fontWeight: '800', letterSpacing: 2.5 },
   title: {
