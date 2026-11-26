@@ -17,10 +17,7 @@ function createProps(isGoogleAccount: boolean) {
     onResumeGame: jest.fn(),
     cloudStatus: 'connected' as const,
     cloudMessage: '',
-    walletBalanceCredits: 100,
-    onOpenWallet: jest.fn(),
     isGoogleAccount,
-    authEmail: 'player@example.com',
     authLoading: false,
     authError: '',
     canSignInWithGoogle: true,
@@ -58,7 +55,7 @@ test('shows poker lobby only after Google authentication', () => {
   expect(screen).toContain('CHOOSE GAME MODE');
   expect(screen).toContain('TEXAS HOLD’EM');
   expect(screen).toContain('CHINESE POKER');
-  expect(screen).toContain('DEMO WALLET');
-  expect(screen).toContain('player@example.com');
+  expect(screen).not.toContain('DEMO WALLET');
+  expect(screen).not.toContain('player@example.com');
   expect(screen).not.toContain('CONTINUE WITH GOOGLE');
 });
