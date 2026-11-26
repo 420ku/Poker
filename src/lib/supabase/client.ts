@@ -15,7 +15,8 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
         storage: AsyncStorage,
         flowType: 'pkce',
         autoRefreshToken: true,
-        persistSession: true,
+        // Keep authenticated sessions in memory only. A fresh app launch must sign in again.
+        persistSession: false,
         detectSessionInUrl: false,
       },
     })
