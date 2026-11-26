@@ -123,7 +123,7 @@ The current Hold’em and Chinese Poker modes are local, single-player games aga
 
 ## Product and responsible-play constraints
 
-- Treat chips as virtual/play-money by default. Do not add deposits, withdrawals, cash-out, real-money wagering, paid tournaments, rake, or prize payouts unless explicitly requested and the applicable legal, platform, payment, age, and licensing requirements have been reviewed.
+- Treat chips as virtual/play-money by default. A sandbox-only payment demo may add non-transferable, non-redeemable virtual credits for portfolio demonstration, but must reject live payment credentials and must not add withdrawals, cash-out, real-money wagering, paid tournaments, rake, or prize payouts. Any future production payment or cash-value feature requires review of applicable legal, platform, payment, age, and licensing requirements.
 - Do not describe virtual chips as money or imply that they have cash value.
 - Add appropriate age, location, responsible-play, and legal controls if product requirements ever move beyond casual play. Escalate regulatory or payments requirements rather than guessing.
 

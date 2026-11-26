@@ -13,6 +13,8 @@ interface HomeScreenProps {
   onResumeGame: () => void;
   cloudStatus: 'connecting' | 'connected' | 'offline' | 'error';
   cloudMessage: string;
+  walletBalanceCredits: number;
+  onOpenWallet: () => void;
 }
 
 export function HomeScreen({
@@ -25,6 +27,8 @@ export function HomeScreen({
   onResumeGame,
   cloudStatus,
   cloudMessage,
+  walletBalanceCredits,
+  onOpenWallet,
 }: HomeScreenProps) {
   const computerOptions = gameMode === 'chinese' ? [1, 2, 3] : [1, 2, 3, 4, 5];
   const isChinesePoker = gameMode === 'chinese';
@@ -37,6 +41,17 @@ export function HomeScreen({
           <Text style={styles.brandName}>POKER ROOM</Text>
           <View style={styles.playMoneyTag}><Text style={styles.playMoneyText}>PLAY MONEY</Text></View>
         </View>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={onOpenWallet}
+          style={({ pressed }) => [styles.walletCard, pressed && styles.optionPressed]}>
+          <View>
+            <Text style={styles.walletEyebrow}>DEMO WALLET</Text>
+            <Text style={styles.walletBalance}>{walletBalanceCredits.toLocaleString('en-PH')} credits</Text>
+          </View>
+          <Text style={styles.walletAction}>MANAGE →</Text>
+        </Pressable>
 
         <View style={styles.hero}>
           <Text style={styles.eyebrow}>YOUR SEAT IS WAITING</Text>
@@ -225,7 +240,15 @@ const styles = StyleSheet.create({
     borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6,
   },
   playMoneyText: { color: '#b7c9b9', fontSize: 9, fontWeight: '800', letterSpacing: 1 },
-  hero: { paddingTop: 34, paddingBottom: 22 },
+  walletCard: {
+    marginTop: 16, paddingHorizontal: 15, paddingVertical: 13, borderRadius: 13,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#11291f', borderWidth: 1, borderColor: '#36503c',
+  },
+  walletEyebrow: { color: '#d5b36a', fontSize: 8, fontWeight: '900', letterSpacing: 1.4 },
+  walletBalance: { marginTop: 5, color: '#f0eadc', fontSize: 16, fontWeight: '900' },
+  walletAction: { color: '#d5b36a', fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
+  hero: { paddingTop: 24, paddingBottom: 22 },
   eyebrow: { color: '#d5b36a', fontSize: 10, fontWeight: '800', letterSpacing: 2.5 },
   title: {
     marginTop: 14, color: '#f5f0e5', fontSize: 43,

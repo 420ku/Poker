@@ -101,3 +101,7 @@ To learn more about React Native, take a look at the following resources:
 This project uses a local Supabase stack for development and a separate hosted Supabase project for production.
 
 See [Supabase environments setup](docs/supabase-environments.md) for Podman on CachyOS, Supabase CLI initialization, local service endpoints, production project linking, and safe migration deployment.
+
+## Xendit sandbox demo wallet
+
+See [Xendit sandbox wallet setup](docs/xendit-sandbox-wallet.md) for Test Mode API keys, Supabase Edge Functions, webhook configuration, and deployment.

@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { AppState, StatusBar, StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, Linking, StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { applyAction, chooseComputerAction, createGame, startNextHand } from './src/domain/poker/game';
 import {
@@ -18,6 +18,8 @@ import { HomeScreen } from './src/features/home/HomeScreen';
 import { PokerTableScreen } from './src/features/game/PokerTableScreen';
 import { ChinesePokerScreen } from './src/features/game/ChinesePokerScreen';
 import { PauseScreen } from './src/features/game/PauseScreen';
+import { WalletScreen } from './src/features/wallet/WalletScreen';
+import { createWalletTopup, loadWalletSummary, type WalletTopupHistoryItem } from './src/services/walletRepository';
 import {
   ensureAnonymousPlayer,
   loadSavedPokerSession,
@@ -25,7 +27,7 @@ import {
 } from './src/services/pokerSessionRepository';
 import { isSupabaseConfigured } from './src/lib/supabase/client';
 
-type Screen = 'home' | 'game' | 'paused' | 'chinese';
+type Screen = 'home' | 'game' | 'paused' | 'chinese' | 'wallet';
 type GameMode = 'holdem' | 'chinese';
 type CloudStatus = 'connecting' | 'connected' | 'offline' | 'error';
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
@@ -45,9 +47,27 @@ function AppContent() {
   const [cloudStatus, setCloudStatus] = useState<CloudStatus>('connecting');
   const [cloudMessage, setCloudMessage] = useState('');
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [walletBalanceCredits, setWalletBalanceCredits] = useState(0);
+  const [walletTopups, setWalletTopups] = useState<WalletTopupHistoryItem[]>([]);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [walletError, setWalletError] = useState('');
   const [isPaused, setIsPaused] = useState(false);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const saveVersion = useRef(0);
+
+  const refreshWallet = useCallback(async (id: string, showLoading = true) => {
+    if (showLoading) setWalletLoading(true);
+    try {
+      const summary = await loadWalletSummary(id);
+      setWalletBalanceCredits(summary.balanceCredits);
+      setWalletTopups(summary.topups);
+      setWalletError('');
+    } catch (error) {
+      setWalletError(describeError(error));
+    } finally {
+      if (showLoading) setWalletLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -85,6 +105,26 @@ function AppContent() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!userId) return undefined;
+
+    void refreshWallet(userId);
+    const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState === 'active') {
+        void refreshWallet(userId, false);
+      }
+    });
+
+    return () => subscription.remove();
+  }, [userId, refreshWallet]);
+
+  async function handleCreateWalletTopup(amountPhp: number) {
+    if (!userId) throw new Error('Connect to Supabase before opening wallet checkout.');
+    setWalletError('');
+    const checkout = await createWalletTopup(amountPhp);
+    await Linking.openURL(checkout.checkoutUrl);
+  }
 
   // Serialize writes so a slower earlier request cannot overwrite a newer chip snapshot.
   useEffect(() => {
@@ -264,6 +304,18 @@ function AppContent() {
           onResumeGame={resumeSelectedGame}
           cloudStatus={cloudStatus}
           cloudMessage={cloudMessage}
+          walletBalanceCredits={walletBalanceCredits}
+          onOpenWallet={() => setScreen('wallet')}
+        />
+      ) : screen === 'wallet' ? (
+        <WalletScreen
+          balanceCredits={walletBalanceCredits}
+          topups={walletTopups}
+          loading={walletLoading}
+          error={walletError || (!userId ? 'Supabase authentication is required for wallet access.' : '')}
+          onBack={() => setScreen('home')}
+          onRefresh={() => userId ? refreshWallet(userId) : Promise.resolve()}
+          onCreateTopup={handleCreateWalletTopup}
         />
       ) : screen === 'chinese' && chineseGame ? (
         <ChinesePokerScreen
@@ -301,6 +353,8 @@ function AppContent() {
           onResumeGame={resumeSelectedGame}
           cloudStatus={cloudStatus}
           cloudMessage={cloudMessage}
+          walletBalanceCredits={walletBalanceCredits}
+          onOpenWallet={() => setScreen('wallet')}
         />
       )}
     </View>
