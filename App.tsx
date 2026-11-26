@@ -25,7 +25,12 @@ import {
   loadSavedPokerSession,
   savePokerSession,
 } from './src/services/pokerSessionRepository';
-import { isSupabaseConfigured } from './src/lib/supabase/client';
+import { isSupabaseConfigured, supabase } from './src/lib/supabase/client';
+import {
+  beginGoogleSignIn,
+  completeGoogleOAuth,
+  GOOGLE_OAUTH_REDIRECT_URL,
+} from './src/services/authRepository';
 
 type Screen = 'home' | 'game' | 'paused' | 'chinese' | 'wallet';
 type GameMode = 'holdem' | 'chinese';
@@ -46,6 +51,10 @@ function AppContent() {
   const [userId, setUserId] = useState<string | null>(null);
   const [cloudStatus, setCloudStatus] = useState<CloudStatus>('connecting');
   const [cloudMessage, setCloudMessage] = useState('');
+  const [isGoogleAccount, setIsGoogleAccount] = useState(false);
+  const [authEmail, setAuthEmail] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState('');
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [walletBalanceCredits, setWalletBalanceCredits] = useState(0);
   const [walletTopups, setWalletTopups] = useState<WalletTopupHistoryItem[]>([]);
@@ -67,6 +76,63 @@ function AppContent() {
     } finally {
       if (showLoading) setWalletLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user;
+      const identities = user?.identities ?? [];
+      const providers = user?.app_metadata?.providers;
+      const linkedToGoogle =
+        identities.some(identity => identity.provider === 'google') ||
+        user?.app_metadata?.provider === 'google' ||
+        (Array.isArray(providers) && providers.includes('google'));
+
+      setUserId(user?.id ?? null);
+      setAuthEmail(user?.email ?? null);
+      setIsGoogleAccount(linkedToGoogle);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+
+    let mounted = true;
+    const handledUrls = new Set<string>();
+
+    async function handleAuthUrl(url: string) {
+      if (!url.startsWith(GOOGLE_OAUTH_REDIRECT_URL) || handledUrls.has(url)) return;
+      handledUrls.add(url);
+
+      try {
+        await completeGoogleOAuth(url);
+        if (mounted) setAuthError('');
+      } catch (error) {
+        if (mounted) setAuthError(describeError(error));
+      }
+    }
+
+    const linkingSubscription = Linking.addEventListener('url', ({ url }) => {
+      void handleAuthUrl(url);
+    });
+
+    void Linking.getInitialURL()
+      .then(url => {
+        if (url) return handleAuthUrl(url);
+        return undefined;
+      })
+      .catch(error => {
+        if (mounted) setAuthError(describeError(error));
+      });
+
+    return () => {
+      mounted = false;
+      linkingSubscription.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -291,6 +357,18 @@ function AppContent() {
     setChineseGame(current => current ? startNextChineseDeal(current) : current);
   }
 
+  async function handleGoogleSignIn() {
+    setAuthLoading(true);
+    setAuthError('');
+    try {
+      await beginGoogleSignIn();
+    } catch (error) {
+      setAuthError(describeError(error));
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
   return (
     <View style={styles.container}>
       {screen === 'home' ? (
@@ -306,6 +384,12 @@ function AppContent() {
           cloudMessage={cloudMessage}
           walletBalanceCredits={walletBalanceCredits}
           onOpenWallet={() => setScreen('wallet')}
+          isGoogleAccount={isGoogleAccount}
+          authEmail={authEmail}
+          authLoading={authLoading}
+          authError={authError}
+          canSignInWithGoogle={Boolean(userId && isSupabaseConfigured)}
+          onGoogleSignIn={handleGoogleSignIn}
         />
       ) : screen === 'wallet' ? (
         <WalletScreen
@@ -355,6 +439,12 @@ function AppContent() {
           cloudMessage={cloudMessage}
           walletBalanceCredits={walletBalanceCredits}
           onOpenWallet={() => setScreen('wallet')}
+          isGoogleAccount={isGoogleAccount}
+          authEmail={authEmail}
+          authLoading={authLoading}
+          authError={authError}
+          canSignInWithGoogle={Boolean(userId && isSupabaseConfigured)}
+          onGoogleSignIn={handleGoogleSignIn}
         />
       )}
     </View>
