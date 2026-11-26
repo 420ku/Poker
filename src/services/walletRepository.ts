@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase/client';
 
 export interface WalletTopupHistoryItem {
@@ -47,6 +48,38 @@ export async function loadWalletSummary(userId: string): Promise<WalletSummary> 
   };
 }
 
+interface WalletFunctionErrorBody {
+  error?: string;
+  message?: string;
+  missingConfiguration?: string[];
+  provider?: {
+    status?: number;
+    code?: string;
+    message?: string;
+  };
+}
+
+async function getWalletFunctionError(error: FunctionsHttpError): Promise<Error> {
+  const response = error.context;
+  const body = await response.clone().json().catch(() => null) as WalletFunctionErrorBody | null;
+  const details = [
+    body?.error ?? body?.message,
+    body?.missingConfiguration?.length
+      ? `Missing Edge Function secrets: ${body.missingConfiguration.join(', ')}`
+      : null,
+    body?.provider?.status ? `Xendit HTTP ${body.provider.status}` : null,
+    body?.provider?.code,
+    body?.provider?.message,
+  ].filter((value): value is string => Boolean(value));
+
+  const status = response.status ? `HTTP ${response.status}` : 'HTTP error';
+  return new Error(
+    details.length > 0
+      ? `Wallet checkout failed (${status}): ${details.join(' — ')}`
+      : `Wallet checkout failed (${status}). Check Supabase Edge Function logs.`,
+  );
+}
+
 export async function createWalletTopup(amountPhp: number): Promise<{
   topupId: string;
   checkoutUrl: string;
@@ -58,7 +91,11 @@ export async function createWalletTopup(amountPhp: number): Promise<{
     body: { amountPhp },
   });
 
+  if (error instanceof FunctionsHttpError) {
+    throw await getWalletFunctionError(error);
+  }
   if (error) throw error;
+
   if (!data?.checkoutUrl || !data?.topupId) {
     throw new Error('Wallet service did not return a checkout URL.');
   }

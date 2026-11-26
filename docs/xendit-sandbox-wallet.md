@@ -92,6 +92,34 @@ bunx supabase functions serve create-wallet-topup
 bunx supabase functions serve xendit-webhook --no-verify-jwt
 ```
 
+## Troubleshooting wallet checkout
+
+If the mobile app reports `Edge Function returned a non-2xx status code`, update and redeploy the latest checkout function and mobile app. The wallet screen now displays the Edge Function response body, including Xendit's HTTP status, error code, and validation message.
+
+```sh
+git pull origin main
+bunx supabase functions deploy create-wallet-topup
+bun run android
+```
+
+For local development, restart the function server after pulling the change:
+
+```sh
+bunx supabase functions serve create-wallet-topup --env-file supabase/functions/.env
+```
+
+Common response details:
+
+- `missingConfiguration`: named Supabase/Xendit environment variables are unavailable to the Edge Function. Set the missing Xendit secret in Supabase Edge Function Secrets; Supabase-managed keys should be injected automatically.
+- `INVALID_API_KEY`: confirm `XENDIT_SECRET_KEY` is a Secret API Key from **Test Mode**, not a publishable key or Live Mode key.
+- `INVALID_COUNTRY` / `INVALID_CURRENCY`: verify the Test Mode account supports PHP transactions for country PH.
+- `INVALID_PAYMENT_CHANNEL`: enable at least one supported PHP payment channel for the Test Mode account.
+- `API_VALIDATION_ERROR`: read Xendit's returned message; the function sends a one-time `PAY` / `PAYMENT_LINK` request and disables payment-method saving.
+
+The checkout request intentionally omits a customer object because this one-time flow sets `allow_save_payment_method: "DISABLED"`. Xendit only requires customer details for flows such as SAVE sessions or when saving a payment method.
+
+Check **Supabase Dashboard → Edge Functions → create-wallet-topup → Logs** for the matching invocation. The function logs Xendit's HTTP status, `error_code`, and message, but never logs the API key.
+
 ## 5. Configure Xendit webhooks
 
 In Xendit Test Mode Dashboard, open **Settings → Webhooks** and register the Payment Session events:

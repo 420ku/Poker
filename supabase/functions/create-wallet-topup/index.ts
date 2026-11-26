@@ -58,7 +58,17 @@ Deno.serve(async request => {
   const xenditSecretKey = Deno.env.get("XENDIT_SECRET_KEY");
 
   if (!supabaseUrl || !anonKey || !serviceRoleKey || !xenditSecretKey) {
-    return jsonResponse({ error: "Wallet payment service is not configured." }, 500);
+    const missingConfiguration = [
+      !supabaseUrl ? "SUPABASE_URL" : null,
+      !anonKey ? "SUPABASE_PUBLISHABLE_KEYS (or SUPABASE_ANON_KEY)" : null,
+      !serviceRoleKey ? "SUPABASE_SECRET_KEYS (or SUPABASE_SERVICE_ROLE_KEY)" : null,
+      !xenditSecretKey ? "XENDIT_SECRET_KEY" : null,
+    ].filter((value): value is string => Boolean(value));
+    console.error("Wallet checkout missing environment variables:", missingConfiguration.join(", "));
+    return jsonResponse({
+      error: "Wallet payment service is not configured.",
+      missingConfiguration,
+    }, 503);
   }
 
   // This portfolio integration deliberately refuses live credentials.
@@ -119,52 +129,94 @@ Deno.serve(async request => {
     return jsonResponse({ error: "Unable to create wallet top-up." }, 500);
   }
 
-  const xenditResponse = await fetch("https://api.xendit.co/sessions", {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${btoa(`${xenditSecretKey}:`)}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      reference_id: referenceId,
-      session_type: "PAY",
-      mode: "PAYMENT_LINK",
-      capture_method: "AUTOMATIC",
-      amount: amountPhp,
-      currency: "PHP",
-      country: "PH",
-      locale: "en",
-      allow_save_payment_method: "DISABLED",
-      customer: {
-        reference_id: `pkr${crypto.randomUUID().replaceAll("-", "")}`,
-        type: "INDIVIDUAL",
-        individual_detail: {
-          given_names: "PokerRoomDemoPlayer",
-        },
-      },
-      description: "Poker Room portfolio demo credits",
-      metadata: {
-        wallet_topup_id: topup.id,
-        app: "poker-room-portfolio-demo",
-      },
-    }),
-  });
+  let xenditResponse: Response;
+  let session: Record<string, unknown>;
 
-  const session = await xenditResponse.json().catch(() => ({}));
-  if (!xenditResponse.ok || !session.payment_session_id || !session.payment_link_url) {
-    await admin
+  try {
+    xenditResponse = await fetch("https://api.xendit.co/sessions", {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${btoa(`${xenditSecretKey}:`)}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        reference_id: referenceId,
+        session_type: "PAY",
+        mode: "PAYMENT_LINK",
+        capture_method: "AUTOMATIC",
+        amount: amountPhp,
+        currency: "PHP",
+        country: "PH",
+        locale: "en",
+        allow_save_payment_method: "DISABLED",
+        description: "Poker Room portfolio demo credits",
+        metadata: {
+          wallet_topup_id: topup.id,
+          app: "poker-room-portfolio-demo",
+        },
+      }),
+    });
+
+    session = await xenditResponse.json().catch(() => ({})) as Record<string, unknown>;
+  } catch (requestError) {
+    const reason = requestError instanceof Error ? requestError.message : "Unknown network error";
+    console.error("Xendit API request failed:", reason);
+
+    const { error: updateError } = await admin
       .from("wallet_topups")
       .update({ status: "failed" })
       .eq("id", topup.id);
-    console.error("Xendit session creation failed:", JSON.stringify(session));
-    return jsonResponse({ error: "Xendit could not create checkout. Check Test Mode API permissions." }, 502);
+
+    if (updateError) console.error("Could not mark failed top-up:", updateError.message);
+
+    return jsonResponse({
+      error: "Could not reach Xendit. Check Edge Function outbound network access and try again.",
+    }, 502);
+  }
+
+  const paymentSessionId = session.payment_session_id;
+  const checkoutUrl = session.payment_link_url;
+
+  if (
+    !xenditResponse.ok ||
+    typeof paymentSessionId !== "string" ||
+    typeof checkoutUrl !== "string"
+  ) {
+    const providerCode =
+      typeof session.error_code === "string" ? session.error_code : "INVALID_XENDIT_RESPONSE";
+    const providerMessage =
+      typeof session.message === "string"
+        ? session.message
+        : "Xendit did not return a payment_session_id and payment_link_url.";
+
+    const { error: updateError } = await admin
+      .from("wallet_topups")
+      .update({ status: "failed" })
+      .eq("id", topup.id);
+
+    if (updateError) console.error("Could not mark failed top-up:", updateError.message);
+
+    console.error("Xendit session creation failed:", {
+      status: xenditResponse.status,
+      code: providerCode,
+      message: providerMessage,
+    });
+
+    return jsonResponse({
+      error: "Xendit could not create checkout.",
+      provider: {
+        status: xenditResponse.status,
+        code: providerCode,
+        message: providerMessage,
+      },
+    }, 502);
   }
 
   const { error: updateError } = await admin
     .from("wallet_topups")
     .update({
-      xendit_session_id: session.payment_session_id,
-      checkout_url: session.payment_link_url,
+      xendit_session_id: paymentSessionId,
+      checkout_url: checkoutUrl,
     })
     .eq("id", topup.id);
 
@@ -175,7 +227,7 @@ Deno.serve(async request => {
 
   return jsonResponse({
     topupId: topup.id,
-    checkoutUrl: session.payment_link_url,
+    checkoutUrl,
     amountPhp,
     credits,
   });
