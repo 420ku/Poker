@@ -63,9 +63,7 @@ function AppContent() {
   const [isPaused, setIsPaused] = useState(false);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const saveVersion = useRef(0);
-  currentGameRef.current = game;
   const lastAuthUserId = useRef<string | null>(null);
-  const currentGameRef = useRef<PokerGame | null>(null);
   const skipNextSaveForUserId = useRef<string | null>(null);
 
   const refreshWallet = useCallback(async (id: string, showLoading = true) => {
@@ -219,10 +217,10 @@ function AppContent() {
     const previousUserId = lastAuthUserId.current;
     lastAuthUserId.current = userId;
 
-    if (previousUserId !== null && previousUserId !== userId && currentGameRef.current) {
+    if (previousUserId !== null && previousUserId !== userId && game) {
       skipNextSaveForUserId.current = userId;
     }
-  }, [userId]);
+  }, [userId, game]);
 
   useEffect(() => {
     if (!userId) return undefined;
@@ -257,6 +255,7 @@ function AppContent() {
     // when the user chooses the existing-account OAuth fallback.
     if (skipNextSaveForUserId.current === userId) {
       skipNextSaveForUserId.current = null;
+      saveVersion.current += 1;
       setSaveStatus('idle');
       return;
     }
