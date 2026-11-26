@@ -66,6 +66,7 @@ function AppContent() {
   const lastAuthUserId = useRef<string | null>(null);
   const skipNextSaveForUserId = useRef<string | null>(null);
   const externalBrowserFlowInProgress = useRef(false);
+  const initialOAuthCallback = useRef<Promise<void>>(Promise.resolve());
 
   const refreshWallet = useCallback(async (id: string, showLoading = true) => {
     if (showLoading) setWalletLoading(true);
@@ -115,9 +116,14 @@ function AppContent() {
 
       // Clear this device's Supabase session as soon as Poker leaves the foreground.
       // Memory-only persistence also guarantees sign-out after process termination.
-      void supabase.auth.signOut({ scope: 'local' }).then(({ error }) => {
-        if (error) setAuthError(describeError(error));
-      });
+      void supabase.auth
+        .signOut({ scope: 'local' })
+        .then(({ error }) => {
+          if (error) setAuthError(describeError(error));
+        })
+        .catch(error => {
+          setAuthError(describeError(error));
+        });
     });
 
     return () => subscription.remove();
@@ -158,7 +164,7 @@ function AppContent() {
       void handleAuthUrl(url);
     });
 
-    void Linking.getInitialURL()
+    initialOAuthCallback.current = Linking.getInitialURL()
       .then(url => {
         if (url) return handleAuthUrl(url);
         return undefined;
@@ -185,6 +191,8 @@ function AppContent() {
       }
 
       try {
+        // Complete a cold-start OAuth deep link before creating a guest session.
+        await initialOAuthCallback.current;
         const id = await ensureAnonymousPlayer();
         if (!active) return;
         setUserId(id);
