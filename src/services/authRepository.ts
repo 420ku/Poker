@@ -36,6 +36,9 @@ export async function beginGoogleSignIn(signInToExistingAccount = false): Promis
   const options = {
     redirectTo: GOOGLE_OAUTH_REDIRECT_URL,
     skipBrowserRedirect: true,
+    queryParams: {
+      prompt: 'select_account',
+    },
   };
 
   const { data, error } =
