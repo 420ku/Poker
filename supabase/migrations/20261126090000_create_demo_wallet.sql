@@ -55,6 +55,10 @@ grant select on public.wallets to authenticated;
 grant select on public.wallet_topups to authenticated;
 grant select on public.wallet_transactions to authenticated;
 
+grant all on public.wallets to service_role;
+grant all on public.wallet_topups to service_role;
+grant all on public.wallet_transactions to service_role;
+
 create policy "Players can read their own wallet"
   on public.wallets for select to authenticated
   using ((select auth.uid()) = user_id);
@@ -151,6 +155,9 @@ begin
   end if;
 
   if v_topup.status = 'completed' then
+    if v_topup.payment_id is distinct from p_payment_id then
+      raise exception 'payment_id_conflict';
+    end if;
     return v_balance;
   end if;
 

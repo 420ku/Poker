@@ -451,7 +451,7 @@
 
   "functions": {
     "create-wallet-topup": {
-      "verify_jwt": true
+      "verify_jwt": false
     },
     "xendit-webhook": {
       "verify_jwt": false

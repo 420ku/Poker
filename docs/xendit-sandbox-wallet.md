@@ -54,7 +54,7 @@ XENDIT_SECRET_KEY=xnd_development_replace_me
 XENDIT_WEBHOOK_TOKEN=replace_with_xendit_callback_verification_token
 ```
 
-The Supabase CLI provides `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` to Edge Functions. The service-role key is used only inside Edge Functions.
+The Supabase CLI provides `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` to Edge Functions. The service-role key is used only inside Edge Functions. Gateway JWT verification is disabled for the checkout function because it verifies the supplied JWT through Supabase Auth itself; never remove that in-function validation.
 
 Restart local Supabase after changing the local function environment:
 
@@ -79,7 +79,7 @@ Deploy the authenticated checkout endpoint:
 bunx supabase functions deploy create-wallet-topup
 ```
 
-Deploy the webhook endpoint. The repository's `supabase/config.jsonc` sets `verify_jwt = false` only for this function; the function authenticates Xendit using the callback verification token:
+Deploy the webhook endpoint. The repository sets gateway `verify_jwt = false` for both endpoints. The checkout function validates the Supabase bearer token with Auth `getUser`; the webhook validates Xendit's callback verification token. Keep both application-level checks enabled:
 
 ```sh
 bunx supabase functions deploy xendit-webhook
