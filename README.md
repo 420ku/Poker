@@ -102,6 +102,10 @@ This project uses a local Supabase stack for development and a separate hosted S
 
 See [Supabase environments setup](docs/supabase-environments.md) for Podman on CachyOS, Supabase CLI initialization, local service endpoints, production project linking, and safe migration deployment.
 
+## Google OAuth
+
+See [Google OAuth sign-in setup](docs/google-oauth.md) for Google Cloud credentials, Supabase provider settings, manual identity linking, and native deep-link configuration.
+
 ## Xendit sandbox demo wallet
 
 See [Xendit sandbox wallet setup](docs/xendit-sandbox-wallet.md) for Test Mode API keys, Supabase Edge Functions, webhook configuration, and deployment.
