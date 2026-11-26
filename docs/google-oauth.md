@@ -6,7 +6,9 @@ The React Native app uses Supabase Auth with the PKCE authorization-code flow an
 poker://auth/callback
 ```
 
-The app initially creates an anonymous Supabase user so guests can save game sessions and use the demo wallet. The Google action links a Google identity to that same user rather than creating a replacement account. This preserves the existing Supabase user ID, wallet ownership, and saved Hold'em session.
+The app initially creates an anonymous Supabase session only as a temporary identity to support Google identity linking. An anonymous or guest session cannot access the lobby, Texas Hold’em, Chinese Poker, saved games, or wallet. The home screen shows only the Google sign-in action until Supabase confirms that the current user has a linked Google identity.
+
+The Google action links a Google identity to the existing guest user rather than creating a replacement account. This preserves the existing Supabase user ID, wallet ownership, and saved Hold'em session.
 
 ## 1. Configure Google OAuth credentials
 
@@ -63,13 +65,16 @@ No additional React Native package is required for this browser-based OAuth flow
 
 ## 5. Verify sign-in
 
-1. Launch the app while signed in as the guest profile.
-2. Tap **SIGN IN** on the Google account card.
+1. Launch the app. Before Google authentication, confirm the only available action is **CONTINUE WITH GOOGLE**.
+2. Tap **CONTINUE WITH GOOGLE**.
 3. Complete Google consent in the system browser.
-4. The browser should return to Poker. The account card should show the connected Google email.
-5. Confirm the same Supabase user still owns the wallet row and saved Hold'em session.
+4. Confirm the browser returns to Poker and the authenticated lobby appears with the linked Google email.
+5. Confirm Texas Hold’em, Chinese Poker, saved-game resume, and wallet are available only after the Google identity is linked.
+6. Confirm the same Supabase user still owns the wallet row and saved Hold'em session.
 
 When the Google identity is already linked to a different Poker user (for example, signing in from a second device), the app offers to sign in to that existing profile. Accepting this switches to the existing Supabase user and restores that profile's wallet and saved Hold'em session. The guest profile created on the new device is not merged automatically; do not accept this fallback when you need to keep unsynced guest data from that device.
+
+If the Supabase session is signed out or no longer has a Google identity, the app returns to the Google-only sign-in screen and clears the active in-memory game from the UI. The game lobby and wallet are not rendered for anonymous sessions.
 
 The mobile app stores only Supabase's user session in AsyncStorage. The Google OAuth client secret remains in Supabase configuration.
 
