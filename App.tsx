@@ -65,6 +65,7 @@ function AppContent() {
   const saveVersion = useRef(0);
   const lastAuthUserId = useRef<string | null>(null);
   const skipNextSaveForUserId = useRef<string | null>(null);
+  const googleOAuthInProgress = useRef(false);
 
   const refreshWallet = useCallback(async (id: string, showLoading = true) => {
     if (showLoading) setWalletLoading(true);
@@ -98,6 +99,28 @@ function AppContent() {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return undefined;
+
+    const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState === 'active') {
+        // Returning from Google's browser is part of the OAuth flow, not an app exit.
+        googleOAuthInProgress.current = false;
+        return;
+      }
+
+      if (nextState !== 'background' || googleOAuthInProgress.current) return;
+
+      // Clear this device's Supabase session as soon as Poker leaves the foreground.
+      // Memory-only persistence also guarantees sign-out after process termination.
+      void supabase.auth.signOut({ scope: 'local' }).then(({ error }) => {
+        if (error) setAuthError(describeError(error));
+      });
+    });
+
+    return () => subscription.remove();
   }, []);
 
   useEffect(() => {
@@ -436,11 +459,13 @@ function AppContent() {
   }
 
   async function handleGoogleSignIn(signInToExistingAccount = false) {
+    googleOAuthInProgress.current = true;
     setAuthLoading(true);
     setAuthError('');
     try {
       await beginGoogleSignIn(signInToExistingAccount);
     } catch (error) {
+      googleOAuthInProgress.current = false;
       setAuthError(describeError(error));
     } finally {
       setAuthLoading(false);
