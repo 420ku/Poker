@@ -13,10 +13,7 @@ interface HomeScreenProps {
   onResumeGame: () => void;
   cloudStatus: 'connecting' | 'connected' | 'offline' | 'error';
   cloudMessage: string;
-  walletBalanceCredits: number;
-  onOpenWallet: () => void;
   isGoogleAccount: boolean;
-  authEmail: string | null;
   authLoading: boolean;
   authError: string;
   canSignInWithGoogle: boolean;
@@ -33,10 +30,7 @@ export function HomeScreen({
   onResumeGame,
   cloudStatus,
   cloudMessage,
-  walletBalanceCredits,
-  onOpenWallet,
   isGoogleAccount,
-  authEmail,
   authLoading,
   authError,
   canSignInWithGoogle,
@@ -100,32 +94,6 @@ export function HomeScreen({
           <View style={styles.brandMark}><Text style={styles.brandMarkText}>♠</Text></View>
           <Text style={styles.brandName}>POKER ROOM</Text>
           <View style={styles.playMoneyTag}><Text style={styles.playMoneyText}>PLAY MONEY</Text></View>
-        </View>
-
-        <Pressable
-          accessibilityRole="button"
-          onPress={onOpenWallet}
-          style={({ pressed }) => [styles.walletCard, pressed && styles.optionPressed]}>
-          <View>
-            <Text style={styles.walletEyebrow}>DEMO WALLET</Text>
-            <Text style={styles.walletBalance}>{walletBalanceCredits.toLocaleString('en-PH')} credits</Text>
-          </View>
-          <Text style={styles.walletAction}>MANAGE →</Text>
-        </Pressable>
-
-        <View style={styles.accountCard}>
-          <View style={styles.accountRow}>
-            <View style={styles.accountInfo}>
-              <Text style={styles.accountEyebrow}>GOOGLE ACCOUNT</Text>
-              <Text style={styles.accountDescription}>
-                {authEmail ?? 'Google account connected'}
-              </Text>
-            </View>
-            <View style={styles.connectedBadge}>
-              <Text style={styles.connectedBadgeText}>CONNECTED</Text>
-            </View>
-          </View>
-          {authError ? <Text style={styles.authError}>{authError}</Text> : null}
         </View>
 
         <View style={styles.hero}>
