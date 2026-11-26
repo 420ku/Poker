@@ -45,6 +45,54 @@ export function HomeScreen({
   const computerOptions = gameMode === 'chinese' ? [1, 2, 3] : [1, 2, 3, 4, 5];
   const isChinesePoker = gameMode === 'chinese';
 
+  if (!isGoogleAccount) {
+    return (
+      <View style={styles.screen}>
+        <View style={styles.authOnlyContent}>
+          <View style={styles.authBrandRow}>
+            <View style={styles.brandMark}>
+              <Text style={styles.brandMarkText}>♠</Text>
+            </View>
+            <Text style={styles.brandName}>POKER ROOM</Text>
+          </View>
+
+          <View style={styles.authOnlyCard}>
+            <Text style={styles.authOnlyEyebrow}>GOOGLE SIGN-IN REQUIRED</Text>
+            <Text style={styles.authOnlyTitle}>Sign in to play.</Text>
+            <Text style={styles.authOnlyDescription}>
+              Continue with your Google account to access Texas Hold’em and Chinese Poker.
+            </Text>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{
+                disabled: !canSignInWithGoogle || authLoading,
+                busy: authLoading,
+              }}
+              disabled={!canSignInWithGoogle || authLoading}
+              onPress={onGoogleSignIn}
+              style={({ pressed }) => [
+                styles.authOnlyButton,
+                (!canSignInWithGoogle || authLoading) && styles.googleButtonDisabled,
+                pressed && styles.optionPressed,
+              ]}>
+              <Text style={styles.authOnlyButtonText}>
+                {authLoading ? 'OPENING GOOGLE…' : 'CONTINUE WITH GOOGLE'}
+              </Text>
+            </Pressable>
+
+            {!canSignInWithGoogle ? (
+              <Text style={styles.authOnlyError}>
+                Supabase is not configured. Add your Supabase URL and publishable key to enable sign-in.
+              </Text>
+            ) : null}
+            {authError ? <Text style={styles.authOnlyError}>{authError}</Text> : null}
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -269,6 +317,35 @@ export function HomeScreen({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#071812' },
+  authOnlyContent: {
+    flex: 1, justifyContent: 'center', paddingHorizontal: 26,
+  },
+  authBrandRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 28,
+  },
+  authOnlyCard: {
+    padding: 23, borderRadius: 20, backgroundColor: '#11291f',
+    borderWidth: 1, borderColor: '#36503c',
+  },
+  authOnlyEyebrow: {
+    color: '#d5b36a', fontSize: 9, fontWeight: '900', letterSpacing: 1.7, textAlign: 'center',
+  },
+  authOnlyTitle: {
+    marginTop: 12, color: '#f5f0e5', fontSize: 30, fontWeight: '900', textAlign: 'center',
+  },
+  authOnlyDescription: {
+    marginTop: 10, color: '#a9b9ae', fontSize: 13, lineHeight: 20, textAlign: 'center',
+  },
+  authOnlyButton: {
+    minHeight: 52, marginTop: 23, borderRadius: 12, justifyContent: 'center',
+    alignItems: 'center', paddingHorizontal: 16, backgroundColor: '#d5b36a',
+  },
+  authOnlyButtonText: {
+    color: '#14251b', fontSize: 10, fontWeight: '900', letterSpacing: 1,
+  },
+  authOnlyError: {
+    marginTop: 12, color: '#edaaa2', fontSize: 10, lineHeight: 15, textAlign: 'center',
+  },
   content: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 22, paddingBottom: 30 },
   topRow: { flexDirection: 'row', alignItems: 'center' },
   brandMark: {
