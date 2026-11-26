@@ -29,7 +29,7 @@ function createProps(isGoogleAccount: boolean) {
 }
 
 test('shows only Google sign-in while user is not Google-authenticated', () => {
-  let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+  let renderer: ReturnType<typeof ReactTestRenderer.create> | undefined;
 
   ReactTestRenderer.act(() => {
     renderer = ReactTestRenderer.create(<HomeScreen {...createProps(false)} />);
@@ -47,7 +47,7 @@ test('shows only Google sign-in while user is not Google-authenticated', () => {
 });
 
 test('shows poker lobby only after Google authentication', () => {
-  let renderer: ReactTestRenderer.ReactTestRenderer | undefined;
+  let renderer: ReturnType<typeof ReactTestRenderer.create> | undefined;
 
   ReactTestRenderer.act(() => {
     renderer = ReactTestRenderer.create(<HomeScreen {...createProps(true)} />);
