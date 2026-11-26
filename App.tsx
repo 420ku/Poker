@@ -19,6 +19,8 @@ import { PokerTableScreen } from './src/features/game/PokerTableScreen';
 import { ChinesePokerScreen } from './src/features/game/ChinesePokerScreen';
 import { PauseScreen } from './src/features/game/PauseScreen';
 import { WalletScreen } from './src/features/wallet/WalletScreen';
+import { ProfileScreen } from './src/features/profile/ProfileScreen';
+import { DashboardTabBar, type DashboardTab } from './src/features/navigation/DashboardTabBar';
 import { createWalletTopup, loadWalletSummary, type WalletTopupHistoryItem } from './src/services/walletRepository';
 import {
   ensureAnonymousPlayer,
@@ -32,7 +34,7 @@ import {
   GOOGLE_OAUTH_REDIRECT_URL,
 } from './src/services/authRepository';
 
-type Screen = 'home' | 'game' | 'paused' | 'chinese' | 'wallet';
+type Screen = 'home' | 'game' | 'paused' | 'chinese' | 'wallet' | 'profile';
 type GameMode = 'holdem' | 'chinese';
 type CloudStatus = 'connecting' | 'connected' | 'offline' | 'error';
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
@@ -53,8 +55,13 @@ function AppContent() {
   const [cloudMessage, setCloudMessage] = useState('');
   const [isGoogleAccount, setIsGoogleAccount] = useState(false);
   const [authEmail, setAuthEmail] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState<string | null>(null);
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
+  const [profileCreatedAt, setProfileCreatedAt] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const [signOutLoading, setSignOutLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [walletBalanceCredits, setWalletBalanceCredits] = useState(0);
   const [walletTopups, setWalletTopups] = useState<WalletTopupHistoryItem[]>([]);
@@ -94,8 +101,25 @@ function AppContent() {
         user?.app_metadata?.provider === 'google' ||
         (Array.isArray(providers) && providers.includes('google'));
 
+      const metadata = user?.user_metadata ?? {};
+      const displayName =
+        typeof metadata.full_name === 'string'
+          ? metadata.full_name
+          : typeof metadata.name === 'string'
+            ? metadata.name
+            : null;
+      const avatarUrl =
+        typeof metadata.avatar_url === 'string'
+          ? metadata.avatar_url
+          : typeof metadata.picture === 'string'
+            ? metadata.picture
+            : null;
+
       setUserId(user?.id ?? null);
       setAuthEmail(user?.email ?? null);
+      setProfileName(displayName);
+      setProfileAvatarUrl(avatarUrl);
+      setProfileCreatedAt(user?.created_at ?? null);
       setIsGoogleAccount(linkedToGoogle);
     });
 
@@ -472,6 +496,36 @@ function AppContent() {
     setChineseGame(current => current ? startNextChineseDeal(current) : current);
   }
 
+  async function performSignOut() {
+    setSignOutLoading(true);
+    setProfileError('');
+    try {
+      if (!supabase) throw new Error('Supabase is not configured.');
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+      if (error) throw error;
+      setScreen('home');
+    } catch (error) {
+      setProfileError(describeError(error));
+    } finally {
+      setSignOutLoading(false);
+    }
+  }
+
+  function handleSignOut() {
+    Alert.alert(
+      'Sign out of Poker Room?',
+      'You will need to sign in with Google again to access your games and wallet.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign out', style: 'destructive', onPress: () => void performSignOut() },
+      ],
+    );
+  }
+
+  function handleDashboardTabPress(tab: DashboardTab) {
+    setScreen(tab === 'play' ? 'home' : tab);
+  }
+
   async function handleGoogleSignIn(signInToExistingAccount = false) {
     externalBrowserFlowInProgress.current = true;
     setAuthLoading(true);
@@ -499,14 +553,22 @@ function AppContent() {
           onResumeGame={resumeSelectedGame}
           cloudStatus={cloudStatus}
           cloudMessage={cloudMessage}
-          walletBalanceCredits={walletBalanceCredits}
-          onOpenWallet={() => setScreen('wallet')}
           isGoogleAccount={isGoogleAccount}
-          authEmail={authEmail}
           authLoading={authLoading}
           authError={authError}
           canSignInWithGoogle={isSupabaseConfigured && cloudStatus !== 'connecting'}
           onGoogleSignIn={handleGoogleSignIn}
+        />
+      ) : screen === 'profile' ? (
+        <ProfileScreen
+          email={authEmail}
+          fullName={profileName}
+          avatarUrl={profileAvatarUrl}
+          userId={userId}
+          createdAt={profileCreatedAt}
+          signOutLoading={signOutLoading}
+          error={profileError}
+          onSignOut={handleSignOut}
         />
       ) : screen === 'wallet' ? (
         <WalletScreen
@@ -554,16 +616,20 @@ function AppContent() {
           onResumeGame={resumeSelectedGame}
           cloudStatus={cloudStatus}
           cloudMessage={cloudMessage}
-          walletBalanceCredits={walletBalanceCredits}
-          onOpenWallet={() => setScreen('wallet')}
           isGoogleAccount={isGoogleAccount}
-          authEmail={authEmail}
           authLoading={authLoading}
           authError={authError}
           canSignInWithGoogle={isSupabaseConfigured && cloudStatus !== 'connecting'}
           onGoogleSignIn={handleGoogleSignIn}
         />
       )}
+      {isGoogleAccount &&
+      (screen === 'home' || screen === 'wallet' || screen === 'profile') ? (
+        <DashboardTabBar
+          activeTab={screen === 'wallet' ? 'wallet' : screen === 'profile' ? 'profile' : 'play'}
+          onTabPress={handleDashboardTabPress}
+        />
+      ) : null}
     </View>
   );
 }
