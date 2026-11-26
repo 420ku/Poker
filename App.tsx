@@ -63,7 +63,10 @@ function AppContent() {
   const [isPaused, setIsPaused] = useState(false);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const saveVersion = useRef(0);
-  const lastSavedUserId = useRef<string | null>(null);
+  currentGameRef.current = game;
+  const lastAuthUserId = useRef<string | null>(null);
+  const currentGameRef = useRef<PokerGame | null>(null);
+  const skipNextSaveForUserId = useRef<string | null>(null);
 
   const refreshWallet = useCallback(async (id: string, showLoading = true) => {
     if (showLoading) setWalletLoading(true);
@@ -211,6 +214,17 @@ function AppContent() {
   }, [userId]);
 
   useEffect(() => {
+    if (!userId) return;
+
+    const previousUserId = lastAuthUserId.current;
+    lastAuthUserId.current = userId;
+
+    if (previousUserId !== null && previousUserId !== userId && currentGameRef.current) {
+      skipNextSaveForUserId.current = userId;
+    }
+  }, [userId]);
+
+  useEffect(() => {
     if (!userId) return undefined;
 
     void refreshWallet(userId);
@@ -239,12 +253,10 @@ function AppContent() {
       return;
     }
 
-    const previousUserId = lastSavedUserId.current;
-    lastSavedUserId.current = userId;
-
     // Do not copy a guest's in-memory game over an existing account's saved game
     // when the user chooses the existing-account OAuth fallback.
-    if (previousUserId !== null && previousUserId !== userId) {
+    if (skipNextSaveForUserId.current === userId) {
+      skipNextSaveForUserId.current = null;
       setSaveStatus('idle');
       return;
     }
