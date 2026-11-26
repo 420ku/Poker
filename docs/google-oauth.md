@@ -8,6 +8,10 @@ poker://auth/callback
 
 The app initially creates an anonymous Supabase session only as a temporary identity to support Google identity linking. An anonymous or guest session cannot access the lobby, Texas Hold’em, Chinese Poker, saved games, or wallet. The home screen shows only the Google sign-in action until Supabase confirms that the current user has a linked Google identity.
 
+Supabase sessions are memory-only (`persistSession: false`). Poker also signs out the local Supabase session when the app enters the background, except while the system browser is completing an OAuth flow. This means switching away from Poker also signs the user out; the next time Poker becomes active, the Google-only sign-in screen is shown. A force-quit or process termination also loses the in-memory session even if the operating system does not deliver a background event.
+
+The OAuth request uses Google's `select_account` prompt so users are asked to choose a Google account again. This signs the user out of Poker's Supabase session; it does not sign the device or browser out of Google itself.
+
 The Google action links a Google identity to the existing guest user rather than creating a replacement account. This preserves the existing Supabase user ID, wallet ownership, and saved Hold'em session.
 
 ## 1. Configure Google OAuth credentials
@@ -76,7 +80,7 @@ When the Google identity is already linked to a different Poker user (for exampl
 
 If the Supabase session is signed out or no longer has a Google identity, the app returns to the Google-only sign-in screen and clears the active in-memory game from the UI. The game lobby and wallet are not rendered for anonymous sessions.
 
-The mobile app stores only Supabase's user session in AsyncStorage. The Google OAuth client secret remains in Supabase configuration.
+The OAuth PKCE code verifier remains temporarily available in the configured native storage so the browser callback can complete. Supabase access and refresh tokens are not persisted. The Google OAuth client secret remains in Supabase configuration.
 
 ## Troubleshooting
 
