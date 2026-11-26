@@ -65,7 +65,7 @@ function AppContent() {
   const saveVersion = useRef(0);
   const lastAuthUserId = useRef<string | null>(null);
   const skipNextSaveForUserId = useRef<string | null>(null);
-  const googleOAuthInProgress = useRef(false);
+  const externalBrowserFlowInProgress = useRef(false);
 
   const refreshWallet = useCallback(async (id: string, showLoading = true) => {
     if (showLoading) setWalletLoading(true);
@@ -107,11 +107,11 @@ function AppContent() {
     const subscription = AppState.addEventListener('change', nextState => {
       if (nextState === 'active') {
         // Returning from Google's browser is part of the OAuth flow, not an app exit.
-        googleOAuthInProgress.current = false;
+        externalBrowserFlowInProgress.current = false;
         return;
       }
 
-      if (nextState !== 'background' || googleOAuthInProgress.current) return;
+      if (nextState !== 'background' || externalBrowserFlowInProgress.current) return;
 
       // Clear this device's Supabase session as soon as Poker leaves the foreground.
       // Memory-only persistence also guarantees sign-out after process termination.
@@ -264,7 +264,13 @@ function AppContent() {
     }
     setWalletError('');
     const checkout = await createWalletTopup(amountPhp);
-    await Linking.openURL(checkout.checkoutUrl);
+    externalBrowserFlowInProgress.current = true;
+    try {
+      await Linking.openURL(checkout.checkoutUrl);
+    } catch (error) {
+      externalBrowserFlowInProgress.current = false;
+      throw error;
+    }
   }
 
   // Serialize writes so a slower earlier request cannot overwrite a newer chip snapshot.
@@ -459,13 +465,13 @@ function AppContent() {
   }
 
   async function handleGoogleSignIn(signInToExistingAccount = false) {
-    googleOAuthInProgress.current = true;
+    externalBrowserFlowInProgress.current = true;
     setAuthLoading(true);
     setAuthError('');
     try {
       await beginGoogleSignIn(signInToExistingAccount);
     } catch (error) {
-      googleOAuthInProgress.current = false;
+      externalBrowserFlowInProgress.current = false;
       setAuthError(describeError(error));
     } finally {
       setAuthLoading(false);
