@@ -69,6 +69,8 @@ No additional React Native package is required for this browser-based OAuth flow
 4. The browser should return to Poker. The account card should show the connected Google email.
 5. Confirm the same Supabase user still owns the wallet row and saved Hold'em session.
 
+When the Google identity is already linked to a different Poker user (for example, signing in from a second device), the app offers to sign in to that existing profile. Accepting this switches to the existing Supabase user and restores that profile's wallet and saved Hold'em session. The guest profile created on the new device is not merged automatically; do not accept this fallback when you need to keep unsynced guest data from that device.
+
 The mobile app stores only Supabase's user session in AsyncStorage. The Google OAuth client secret remains in Supabase configuration.
 
 ## Troubleshooting
