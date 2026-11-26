@@ -8,6 +8,35 @@ const PACKAGES: Record<number, number> = {
   500: 50_000,
 };
 
+function getNamedKey(environmentVariable: string): string | null {
+  const raw = Deno.env.get(environmentVariable);
+  if (!raw) return null;
+
+  try {
+    const keys = JSON.parse(raw) as Record<string, unknown>;
+    const defaultKey = keys.default;
+    return typeof defaultKey === "string" && defaultKey.length > 0
+      ? defaultKey
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function getSupabasePublishableKey(): string | null {
+  return (
+    Deno.env.get("SUPABASE_ANON_KEY") ??
+    getNamedKey("SUPABASE_PUBLISHABLE_KEYS")
+  );
+}
+
+function getSupabaseSecretKey(): string | null {
+  return (
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+    getNamedKey("SUPABASE_SECRET_KEYS")
+  );
+}
+
 Deno.serve(async request => {
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -24,8 +53,8 @@ Deno.serve(async request => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const anonKey = getSupabasePublishableKey();
+  const serviceRoleKey = getSupabaseSecretKey();
   const xenditSecretKey = Deno.env.get("XENDIT_SECRET_KEY");
 
   if (!supabaseUrl || !anonKey || !serviceRoleKey || !xenditSecretKey) {

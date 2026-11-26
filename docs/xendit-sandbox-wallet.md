@@ -54,7 +54,7 @@ XENDIT_SECRET_KEY=xnd_development_replace_me
 XENDIT_WEBHOOK_TOKEN=replace_with_xendit_callback_verification_token
 ```
 
-The Supabase CLI provides `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` to Edge Functions. The service-role key is used only inside Edge Functions. Gateway JWT verification is disabled for the checkout function because it verifies the supplied JWT through Supabase Auth itself; never remove that in-function validation.
+Supabase automatically injects `SUPABASE_URL` plus either the legacy `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` values or the newer `SUPABASE_PUBLISHABLE_KEYS` / `SUPABASE_SECRET_KEYS` JSON dictionaries. These functions now support both formats. The secret/service-role key is used only inside Edge Functions. Gateway JWT verification is disabled for the checkout function because it verifies the supplied JWT through Supabase Auth itself; never remove that in-function validation.
 
 Restart local Supabase after changing the local function environment:
 
@@ -63,7 +63,7 @@ bunx supabase stop
 bunx supabase start
 ```
 
-For hosted development, add `XENDIT_SECRET_KEY` and `XENDIT_WEBHOOK_TOKEN` under **Supabase Dashboard → Edge Functions → Secrets**, or upload them using a protected local env file:
+For hosted development, add `XENDIT_SECRET_KEY` and `XENDIT_WEBHOOK_TOKEN` under **Supabase Dashboard → Edge Functions → Secrets**. The `XENDIT_WEBHOOK_TOKEN` value must exactly match the callback verification token shown by Xendit in the webhook settings (the value sent in the `X-CALLBACK-TOKEN` request header). Do not use the Xendit API key as the callback token. You can also upload both values using a protected local env file:
 
 ```sh
 bunx supabase secrets set --env-file <path-to-private-env-file>
@@ -126,13 +126,14 @@ Do **not** add `XENDIT_SECRET_KEY`, `XENDIT_WEBHOOK_TOKEN`, or `SUPABASE_SERVICE
 
 ## 7. Test the flow
 
-1. Launch the app and wait for anonymous Supabase authentication to finish.
-2. Open **Demo Wallet** from the lobby.
-3. Select a package; the app opens Xendit hosted checkout.
-4. Complete a simulated payment using Xendit's Test Mode instructions.
-5. Confirm Xendit sends `payment_session.completed` to the webhook.
-6. Return to the app and refresh. The top-up should be `COMPLETED` and the wallet balance should increase exactly once.
-7. Replay the same webhook from Xendit Dashboard or call it again with the same event; the balance must not increase again.
+1. In Xendit's **Test and save** webhook test, the example event may have `session_type: SAVE`. The function now authenticates the callback and replies with HTTP 200 and `ignored: true`; SAVE events are not wallet payments and must never credit wallet credits.
+2. Launch the app and wait for anonymous Supabase authentication to finish.
+3. Open **Demo Wallet** from the lobby.
+4. Select a package; the app opens Xendit hosted checkout.
+5. Complete a simulated payment using Xendit's Test Mode instructions.
+6. Confirm Xendit sends `payment_session.completed` to the webhook.
+7. Return to the app and refresh. The top-up should be `COMPLETED` and the wallet balance should increase exactly once.
+8. Replay the same webhook from Xendit Dashboard or call it again with the same event; the balance must not increase again.
 
 If the checkout opens but the wallet remains unchanged, verify the webhook URL, callback token, deployed function secrets, and function logs. The mobile return to the app is not treated as proof of payment; only the verified webhook can credit the wallet.
 
