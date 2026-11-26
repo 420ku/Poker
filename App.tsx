@@ -466,7 +466,7 @@ function AppContent() {
           authEmail={authEmail}
           authLoading={authLoading}
           authError={authError}
-          canSignInWithGoogle={isSupabaseConfigured}
+          canSignInWithGoogle={isSupabaseConfigured && cloudStatus !== 'connecting'}
           onGoogleSignIn={handleGoogleSignIn}
         />
       ) : screen === 'wallet' ? (
@@ -521,7 +521,7 @@ function AppContent() {
           authEmail={authEmail}
           authLoading={authLoading}
           authError={authError}
-          canSignInWithGoogle={isSupabaseConfigured}
+          canSignInWithGoogle={isSupabaseConfigured && cloudStatus !== 'connecting'}
           onGoogleSignIn={handleGoogleSignIn}
         />
       )}
