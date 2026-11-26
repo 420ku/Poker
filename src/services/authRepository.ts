@@ -17,7 +17,7 @@ function requireSupabase() {
  * Promote the current guest account by linking Google to its existing user ID.
  * A normal OAuth sign-in is used only when no session exists.
  */
-export async function beginGoogleSignIn(): Promise<void> {
+export async function beginGoogleSignIn(signInToExistingAccount = false): Promise<void> {
   const client = requireSupabase();
   const { data: sessionData, error: sessionError } = await client.auth.getSession();
 
@@ -38,9 +38,10 @@ export async function beginGoogleSignIn(): Promise<void> {
     skipBrowserRedirect: true,
   };
 
-  const { data, error } = session
-    ? await client.auth.linkIdentity({ provider: 'google', options })
-    : await client.auth.signInWithOAuth({ provider: 'google', options });
+  const { data, error } =
+    session && !signInToExistingAccount
+      ? await client.auth.linkIdentity({ provider: 'google', options })
+      : await client.auth.signInWithOAuth({ provider: 'google', options });
 
   if (error) throw error;
   if (!data.url) throw new Error('Supabase did not return a Google authorization URL.');
@@ -60,9 +61,12 @@ export async function completeGoogleOAuth(callbackUrl: string): Promise<void> {
 
   const callbackError =
     getParameter('error_description') ?? getParameter('error');
+  const callbackErrorCode = getParameter('error_code');
 
   if (callbackError) {
-    throw new Error(callbackError);
+    throw new Error(
+      callbackErrorCode ? `${callbackErrorCode}: ${callbackError}` : callbackError,
+    );
   }
 
   const code = getParameter('code');
