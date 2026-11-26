@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Linking, StatusBar, StyleSheet, View } from 'react-native';
+import { Alert, AppState, Linking, StatusBar, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { applyAction, chooseComputerAction, createGame, startNextHand } from './src/domain/poker/game';
 import {
@@ -63,6 +63,7 @@ function AppContent() {
   const [isPaused, setIsPaused] = useState(false);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const saveVersion = useRef(0);
+  const lastSavedUserId = useRef<string | null>(null);
 
   const refreshWallet = useCallback(async (id: string, showLoading = true) => {
     if (showLoading) setWalletLoading(true);
@@ -112,7 +113,20 @@ function AppContent() {
         await completeGoogleOAuth(url);
         if (mounted) setAuthError('');
       } catch (error) {
-        if (mounted) setAuthError(describeError(error));
+        const message = describeError(error);
+        if (/identity_already_exists|already linked|identity.*exists/i.test(message)) {
+          Alert.alert(
+            'Google account already exists',
+            'This Google account is already connected to another Poker profile. Sign in to that profile instead? Guest wallet and game data on this device will not be merged automatically.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Sign in', onPress: () => void handleGoogleSignIn(true) },
+            ],
+          );
+          return;
+        }
+
+        if (mounted) setAuthError(message);
       }
     }
 
@@ -151,13 +165,9 @@ function AppContent() {
         if (!active) return;
         setUserId(id);
 
-        const saved = await loadSavedPokerSession(id);
-        if (!active) return;
-        setSavedGame(saved?.game ?? null);
-        if (saved) setComputerPlayers(saved.game.computerCount);
         setCloudStatus('connected');
         setCloudMessage('');
-        setSaveStatus(saved ? 'saved' : 'idle');
+        setSaveStatus('idle');
       } catch (error) {
         if (!active) return;
         setCloudStatus('error');
@@ -171,6 +181,34 @@ function AppContent() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!userId) return undefined;
+
+    let active = true;
+    setSavedGame(null);
+
+    async function restoreUserSession() {
+      try {
+        const saved = await loadSavedPokerSession(userId);
+        if (!active) return;
+
+        setSavedGame(saved?.game ?? null);
+        if (saved) setComputerPlayers(saved.game.computerCount);
+        setSaveStatus(saved ? 'saved' : 'idle');
+      } catch (error) {
+        if (!active) return;
+        setCloudStatus('error');
+        setCloudMessage(describeError(error));
+        setSaveStatus('error');
+      }
+    }
+
+    void restoreUserSession();
+    return () => {
+      active = false;
+    };
+  }, [userId]);
 
   useEffect(() => {
     if (!userId) return undefined;
@@ -198,6 +236,16 @@ function AppContent() {
 
     if (!userId) {
       setSaveStatus('offline');
+      return;
+    }
+
+    const previousUserId = lastSavedUserId.current;
+    lastSavedUserId.current = userId;
+
+    // Do not copy a guest's in-memory game over an existing account's saved game
+    // when the user chooses the existing-account OAuth fallback.
+    if (previousUserId !== null && previousUserId !== userId) {
+      setSaveStatus('idle');
       return;
     }
 
@@ -357,11 +405,11 @@ function AppContent() {
     setChineseGame(current => current ? startNextChineseDeal(current) : current);
   }
 
-  async function handleGoogleSignIn() {
+  async function handleGoogleSignIn(signInToExistingAccount = false) {
     setAuthLoading(true);
     setAuthError('');
     try {
-      await beginGoogleSignIn();
+      await beginGoogleSignIn(signInToExistingAccount);
     } catch (error) {
       setAuthError(describeError(error));
     } finally {
