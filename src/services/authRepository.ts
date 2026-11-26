@@ -15,7 +15,7 @@ function requireSupabase() {
 
 /**
  * Promote the current guest account by linking Google to its existing user ID.
- * A normal OAuth sign-in is used only when no session exists.
+ * A normal OAuth sign-in is also supported when recovering an existing profile.
  */
 export async function beginGoogleSignIn(signInToExistingAccount = false): Promise<void> {
   const client = requireSupabase();
@@ -55,6 +55,14 @@ export async function beginGoogleSignIn(signInToExistingAccount = false): Promis
 export async function completeGoogleOAuth(callbackUrl: string): Promise<void> {
   const client = requireSupabase();
   const parsedUrl = new URL(callbackUrl);
+
+  if (
+    parsedUrl.protocol !== 'poker:' ||
+    parsedUrl.hostname !== 'auth' ||
+    parsedUrl.pathname !== '/callback'
+  ) {
+    throw new Error('Unexpected Google sign-in callback URL.');
+  }
   const hashParams = new URLSearchParams(parsedUrl.hash.replace(/^#/, ''));
   const getParameter = (name: string) =>
     parsedUrl.searchParams.get(name) ?? hashParams.get(name);
