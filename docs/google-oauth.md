@@ -8,7 +8,7 @@ poker://auth/callback
 
 The app initially creates an anonymous Supabase session only as a temporary identity to support Google identity linking. An anonymous or guest session cannot access the lobby, Texas Hold’em, Chinese Poker, saved games, or wallet. The home screen shows only the Google sign-in action until Supabase confirms that the current user has a linked Google identity.
 
-Supabase sessions are memory-only (`persistSession: false`). Poker also signs out the local Supabase session when the app enters the background, except while the system browser is completing an OAuth flow. This means switching away from Poker also signs the user out; the next time Poker becomes active, the Google-only sign-in screen is shown. A force-quit or process termination also loses the in-memory session even if the operating system does not deliver a background event.
+Supabase sessions are memory-only (`persistSession: false`). Poker also signs out the local Supabase session when the app enters the background, except while the system browser is handling Google OAuth or a wallet checkout. This means switching away from Poker also signs the user out; the next time Poker becomes active, the Google-only sign-in screen is shown. A force-quit or process termination also loses the in-memory session even if the operating system does not deliver a background event.
 
 The OAuth request uses Google's `select_account` prompt so users are asked to choose a Google account again. This signs the user out of Poker's Supabase session; it does not sign the device or browser out of Google itself.
 
