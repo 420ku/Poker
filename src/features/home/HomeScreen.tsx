@@ -116,29 +116,14 @@ export function HomeScreen({
         <View style={styles.accountCard}>
           <View style={styles.accountRow}>
             <View style={styles.accountInfo}>
-              <Text style={styles.accountEyebrow}>
-                {isGoogleAccount ? 'GOOGLE ACCOUNT' : 'GUEST PROFILE'}
-              </Text>
+              <Text style={styles.accountEyebrow}>GOOGLE ACCOUNT</Text>
               <Text style={styles.accountDescription}>
-                {isGoogleAccount
-                  ? authEmail ?? 'Google account connected'
-                  : 'Connect Google to keep your wallet and saved games with your account.'}
+                {authEmail ?? 'Google account connected'}
               </Text>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ disabled: !canSignInWithGoogle || authLoading || isGoogleAccount }}
-              disabled={!canSignInWithGoogle || authLoading || isGoogleAccount}
-              onPress={onGoogleSignIn}
-              style={({ pressed }) => [
-                styles.googleButton,
-                (!canSignInWithGoogle || authLoading || isGoogleAccount) && styles.googleButtonDisabled,
-                pressed && styles.optionPressed,
-              ]}>
-              <Text style={styles.googleButtonText}>
-                {isGoogleAccount ? 'CONNECTED' : authLoading ? 'OPENING…' : 'SIGN IN'}
-              </Text>
-            </Pressable>
+            <View style={styles.connectedBadge}>
+              <Text style={styles.connectedBadgeText}>CONNECTED</Text>
+            </View>
           </View>
           {authError ? <Text style={styles.authError}>{authError}</Text> : null}
         </View>
@@ -375,12 +360,14 @@ const styles = StyleSheet.create({
   accountInfo: { flex: 1 },
   accountEyebrow: { color: '#d5b36a', fontSize: 8, fontWeight: '900', letterSpacing: 1.2 },
   accountDescription: { marginTop: 4, color: '#a9b9ae', fontSize: 10, lineHeight: 15 },
-  googleButton: {
-    minHeight: 37, justifyContent: 'center', paddingHorizontal: 12,
-    borderRadius: 9, backgroundColor: '#d5b36a',
+  connectedBadge: {
+    borderRadius: 20, paddingHorizontal: 10, paddingVertical: 7,
+    backgroundColor: '#203d2d', borderWidth: 1, borderColor: '#52633f',
+  },
+  connectedBadgeText: {
+    color: '#a9d1ad', fontSize: 8, fontWeight: '900', letterSpacing: 0.6,
   },
   googleButtonDisabled: { opacity: 0.5 },
-  googleButtonText: { color: '#14251b', fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
   authError: { marginTop: 8, color: '#edaaa2', fontSize: 10, lineHeight: 14 },
   hero: { paddingTop: 24, paddingBottom: 22 },
   eyebrow: { color: '#d5b36a', fontSize: 10, fontWeight: '800', letterSpacing: 2.5 },
