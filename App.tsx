@@ -184,7 +184,7 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    if (!userId) return undefined;
+    if (!userId || !isGoogleAccount) return undefined;
 
     let active = true;
     setSavedGame(null);
@@ -209,7 +209,7 @@ function AppContent() {
     return () => {
       active = false;
     };
-  }, [userId]);
+  }, [userId, isGoogleAccount]);
 
   useEffect(() => {
     if (!userId) return;
@@ -223,7 +223,7 @@ function AppContent() {
   }, [userId, game]);
 
   useEffect(() => {
-    if (!userId) return undefined;
+    if (!userId || !isGoogleAccount) return undefined;
 
     void refreshWallet(userId);
     const subscription = AppState.addEventListener('change', nextState => {
@@ -233,10 +233,12 @@ function AppContent() {
     });
 
     return () => subscription.remove();
-  }, [userId, refreshWallet]);
+  }, [userId, isGoogleAccount, refreshWallet]);
 
   async function handleCreateWalletTopup(amountPhp: number) {
-    if (!userId) throw new Error('Connect to Supabase before opening wallet checkout.');
+    if (!isGoogleAccount || !userId) {
+      throw new Error('Sign in with Google before opening wallet checkout.');
+    }
     setWalletError('');
     const checkout = await createWalletTopup(amountPhp);
     await Linking.openURL(checkout.checkoutUrl);
@@ -246,7 +248,7 @@ function AppContent() {
   useEffect(() => {
     if (!game) return;
 
-    if (!userId) {
+    if (!isGoogleAccount || !userId) {
       setSaveStatus('offline');
       return;
     }
@@ -283,12 +285,22 @@ function AppContent() {
           setCloudMessage(describeError(error));
         }
       });
-  }, [game, isPaused, userId]);
+  }, [game, isPaused, userId, isGoogleAccount]);
+
+  useEffect(() => {
+    if (isGoogleAccount) return;
+
+    setScreen('home');
+    setGame(null);
+    setChineseGame(null);
+    setSavedGame(null);
+    setIsPaused(false);
+  }, [isGoogleAccount]);
 
   // Stop Hold’em computer actions when the app is backgrounded.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextState => {
-      if (nextState !== 'active' && screen === 'game' && game) {
+      if (isGoogleAccount && nextState !== 'active' && screen === 'game' && game) {
         setSavedGame(game);
         setIsPaused(true);
         setScreen('paused');
@@ -296,10 +308,11 @@ function AppContent() {
     });
 
     return () => subscription.remove();
-  }, [game, screen]);
+  }, [game, screen, isGoogleAccount]);
 
   useEffect(() => {
     if (
+      !isGoogleAccount ||
       screen !== 'game' ||
       isPaused ||
       !game ||
@@ -331,7 +344,7 @@ function AppContent() {
     }, 650);
 
     return () => clearTimeout(timer);
-  }, [game, screen, isPaused]);
+  }, [game, screen, isPaused, isGoogleAccount]);
 
   function handleGameModeChange(mode: GameMode) {
     setGameMode(mode);
@@ -341,6 +354,8 @@ function AppContent() {
   }
 
   function startGame() {
+    if (!isGoogleAccount) return;
+
     if (gameMode === 'chinese') {
       setChineseGame(createChinesePokerGame(computerPlayers));
       setGame(null);
@@ -356,6 +371,8 @@ function AppContent() {
   }
 
   function resumeSelectedGame() {
+    if (!isGoogleAccount) return;
+
     if (gameMode === 'chinese') {
       if (!chineseGame) return;
       setScreen('chinese');
@@ -379,6 +396,8 @@ function AppContent() {
   }
 
   function resumeCurrentGame() {
+    if (!isGoogleAccount) return;
+
     setIsPaused(false);
     setScreen('game');
   }
@@ -430,7 +449,7 @@ function AppContent() {
 
   return (
     <View style={styles.container}>
-      {screen === 'home' ? (
+      {!isGoogleAccount || screen === 'home' ? (
         <HomeScreen
           gameMode={gameMode}
           onGameModeChange={handleGameModeChange}
@@ -447,7 +466,7 @@ function AppContent() {
           authEmail={authEmail}
           authLoading={authLoading}
           authError={authError}
-          canSignInWithGoogle={Boolean(userId && isSupabaseConfigured)}
+          canSignInWithGoogle={isSupabaseConfigured}
           onGoogleSignIn={handleGoogleSignIn}
         />
       ) : screen === 'wallet' ? (
@@ -502,7 +521,7 @@ function AppContent() {
           authEmail={authEmail}
           authLoading={authLoading}
           authError={authError}
-          canSignInWithGoogle={Boolean(userId && isSupabaseConfigured)}
+          canSignInWithGoogle={isSupabaseConfigured}
           onGoogleSignIn={handleGoogleSignIn}
         />
       )}
