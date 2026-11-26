@@ -119,8 +119,8 @@ export function WalletScreen({
           <Text style={styles.noticeTitle}>SANDBOX ONLY</Text>
           <Text style={styles.noticeText}>
             This wallet is for showcasing a mobile payment integration. Credits are non-transferable,
-            cannot be withdrawn, and are not redeemable for cash or prizes. Only Xendit Test Mode keys
-            are accepted.
+            cannot be withdrawn, and are not redeemable for cash or prizes. Table stacks remain
+            separate from this demo balance. Only Xendit Test Mode keys are accepted.
           </Text>
         </View>
 

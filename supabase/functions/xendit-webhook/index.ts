@@ -122,6 +122,7 @@ Deno.serve(async request => {
     session.reference_id !== referenceId ||
     session.status !== "COMPLETED" ||
     session.session_type !== "PAY" ||
+    session.mode !== "PAYMENT_LINK" ||
     session.currency !== "PHP" ||
     session.country !== "PH" ||
     Number(session.amount) !== Number(topup.amount_php) ||

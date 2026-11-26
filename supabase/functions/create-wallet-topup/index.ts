@@ -100,6 +100,7 @@ Deno.serve(async request => {
       reference_id: referenceId,
       session_type: "PAY",
       mode: "PAYMENT_LINK",
+      capture_method: "AUTOMATIC",
       amount: amountPhp,
       currency: "PHP",
       country: "PH",
